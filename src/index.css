@@ -1,0 +1,13 @@
+@font-face {
+  font-family: Nunito_Sans;
+  src: url("/fonts/NunitoSans_7pt-Regular.ttf");
+}
+
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  font-family: "Nunito_Sans", Courier, monospace;
+  transition: all 0.2s ease;
+}
