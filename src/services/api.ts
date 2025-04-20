@@ -176,6 +176,8 @@ export const vendorApi = {
   },
 };
 
+//waived customer
+
 export const waivedCustomerApi = {
   waivedCustomerSignUp: async (payload: IWaivedCustomerSignUp) => {
     console.log("test payload:", payload);
@@ -187,6 +189,8 @@ export const waivedCustomerApi = {
       });
   },
 };
+
+//waived admin
 
 export const waivedAdminApi = {
   addTeamMate: async (payload: IWaivedAddTeamMate) => {
@@ -274,6 +278,24 @@ export const waivedAdminApi = {
     const hash = (await asyncGetItem("token")) || "";
     return axiosInstance(hash, undefined)
       .post(`${serviceLinks.getSubscriptionPlanById}/?subscriptionPlanId=${id}`)
+      .then((res) => res.data)
+      .catch((err) => {
+        throw err?.response;
+      });
+  },
+  getUrgentPurchaseWaivedProducts: async () => {
+    const hash = (await asyncGetItem("token")) || "";
+    return axiosInstance(hash, undefined)
+      .get(serviceLinks.getUrgentPurchaseWaivedProducts)
+      .then((res) => res.data)
+      .catch((err) => {
+        throw err?.response;
+      });
+  },
+  getAuditLog: async (adminId: string) => {
+    const hash = (await asyncGetItem("token")) || "";
+    return axiosInstance(hash, undefined)
+      .get(serviceLinks.getAuditLog(adminId))
       .then((res) => res.data)
       .catch((err) => {
         throw err?.response;

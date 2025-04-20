@@ -224,7 +224,7 @@ const Login = () => {
                       </Box>
 
                       {/* Sign Up call to action with dynamic route */}
-                      <Box textAlign="center" mt="20px">
+                      {/* <Box textAlign="center" mt="20px">
                         <Text>
                           Don't have an account yet?{" "}
                           <Link to={signupRoute}>
@@ -233,7 +233,7 @@ const Login = () => {
                             </Text>
                           </Link>
                         </Text>
-                      </Box>
+                      </Box> */}
                     </FormControl>
                   </Form>
                 )}

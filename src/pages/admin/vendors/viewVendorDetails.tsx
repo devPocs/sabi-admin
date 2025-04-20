@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Text,
   Heading,
@@ -10,6 +11,7 @@ import {
   Button,
   Avatar,
 } from "@chakra-ui/react";
+import { toast } from "react-toastify";
 
 interface VendorDetailsProps {
   vendor?: {
@@ -27,14 +29,29 @@ interface VendorDetailsProps {
 }
 
 const ViewVendor: React.FC<VendorDetailsProps> = ({ vendor, onClose }) => {
+  const [status, setStatus] = useState("Unblocked");
   const textColor = useColorModeValue("gray.900", "white");
   const bgColor = useColorModeValue("white", "gray.800");
   const blockBtnBg = useColorModeValue("#FAD3D3", "#FAD3D3");
+
+  console.log("vendor id", vendor?.id);
 
   if (!vendor) {
     return null;
   }
 
+  const toggleStatus = () => {
+    const newStatus = status === "Unblocked" ? "Blocked" : "Unblocked";
+    setStatus(newStatus);
+
+    toast.success(`User has been ${newStatus.toLowerCase()} successfully`, {
+      autoClose: 3000,
+      hideProgressBar: false,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: true,
+    });
+  };
   return (
     <Box
       width="100%"
@@ -74,43 +91,30 @@ const ViewVendor: React.FC<VendorDetailsProps> = ({ vendor, onClose }) => {
       <VStack align="stretch" spacing="20px">
         <DetailItem
           label="Business Name"
-          value={vendor.businessName || "Grace & Glory"}
+          value={vendor.businessName || "N/A"}
         />
-        <DetailItem
-          label="Phone Number"
-          value={vendor.phoneNumber || "09060355350"}
-        />
-        <DetailItem
-          label="Email Address"
-          value={vendor.email || "Musilu@gmail.com"}
-        />
-        <DetailItem label="LGA" value={vendor.lga || "Ikorodu North"} />
-        <DetailItem
-          label="Address"
-          value={
-            vendor.address || "Road 7a, Dr shaffideen amuwo street, Ajah, Lagos"
-          }
-        />
-        <DetailItem
-          label="Date Added"
-          value={vendor.dateAdded || "Oct 29, 2024; 10:00 am"}
-        />
+        <DetailItem label="Phone Number" value={vendor.phoneNumber || "N/A"} />
+        <DetailItem label="Email Address" value={vendor.email || "N/A"} />
+        <DetailItem label="LGA" value={vendor.lga || "N/A"} />
+        <DetailItem label="Address" value={vendor.address || "N/A"} />
+        <DetailItem label="Date Added" value={vendor.dateAdded || "N/A"} />
       </VStack>
 
       {/* Block button */}
       <Button
         w="100%"
         mt="32px"
-        bg={blockBtnBg}
-        color="#E53E3E"
+        bg={status === "Unblocked" ? "#FFF5F5" : "#E8FFF5"}
+        color={status === "Unblocked" ? "#E53E3E" : "#38A169"}
         fontWeight="600"
-        _hover={{ bg: "#F8BEBE" }}
+        _hover={{ bg: status === "Unblocked" ? "#F8BEBE" : "#D6F5E6" }}
         height="48px"
         borderRadius="8px"
+        onClick={toggleStatus}
       >
-        Block
+        {status === "Unblocked" ? "Block" : "Unblock"}
       </Button>
-      {/* Apprive Button */}
+      {/* Approve Button */}
       <Button
         w="100%"
         mt="32px"

@@ -9,6 +9,8 @@ import { PersistGate } from "redux-persist/integration/react";
 import { persistor, store } from "./redux/store";
 import { Provider } from "react-redux";
 import { vendorApi } from "@services/api";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const queryClient = new QueryClient();
 
@@ -27,7 +29,6 @@ function App() {
     };
 
     refreshToken();
-
     const refreshInterval = setInterval(refreshToken, 4 * 60 * 1000);
 
     return () => clearInterval(refreshInterval);
@@ -40,6 +41,7 @@ function App() {
           <QueryClientProvider client={queryClient}>
             <ChakraProvider theme={currentTheme}>
               <AppRoutes />
+              <ToastContainer />
             </ChakraProvider>
           </QueryClientProvider>
         </PersistGate>

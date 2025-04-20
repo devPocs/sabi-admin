@@ -50,6 +50,7 @@ const Vendors = () => {
       });
     },
   });
+  console.log("vendorsData", vendorsData);
 
   // Transform API data for the table
   const vendorRows =
@@ -107,7 +108,7 @@ const Vendors = () => {
       phoneNumber: params.row["Phone Number"],
       lga: params.row.LGA,
       email: params.row.email,
-      address: params.row.address,
+      address: params.row.userAddress,
       dateAdded: formatDate(params.row.dateAdded),
       profileImage: params.row.profileImage,
     };

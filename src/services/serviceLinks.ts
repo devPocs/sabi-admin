@@ -43,4 +43,9 @@ export const serviceLinks = {
     baseUrl + "/api/WaivedMarket/GetSubscriptionPlanById",
   getVendorAndProducts: baseUrl + "/api/WaivedMarket/GetVendorAndProducts",
   getCustomerComplaints: baseUrl + "/api/WaivedMarket/GetCustomerComplaints",
+  getUrgentPurchaseWaivedProducts:
+    baseUrl + "/api/WaivedMarket/GetUrgentPurchaseWaivedProduct",
+  blockAndUnblockVendor: baseUrl + "/api/WaivedMarket/BlockOrUnblockVendor",
+  getAuditLog: (adminId: string) =>
+    baseUrl + `/api/Admin/${adminId}/audit-logs`,
 };

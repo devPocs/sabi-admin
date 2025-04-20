@@ -11,7 +11,6 @@ import {
   Flex,
   IconButton,
   Button,
-  Spinner,
   Center,
   useToast,
   Modal,
@@ -31,6 +30,7 @@ import { useQuery } from "@tanstack/react-query";
 import { waivedAdminApi } from "@services/api";
 import WaivedMarketDate from "../addWaivedMarketDate";
 import EditWaivedMarket from "../editWaivedMarket";
+import Spinner from "@components/spinner";
 
 const Home = () => {
   // State for waived market date
@@ -52,7 +52,7 @@ const Home = () => {
   } = useDisclosure();
 
   // Sample data for stats cards
-  const vendorCount = 500;
+
   const urgentPurchasesCount = 200;
 
   // Pagination state
@@ -126,7 +126,15 @@ const Home = () => {
       });
     },
   });
+  const { data: urgentProductsData } = useQuery({
+    queryKey: ["urgent products"],
+    queryFn: waivedAdminApi.getUrgentPurchaseWaivedProducts,
+    Success: () => {
+      console.log(urgentProductsData);
+    },
+  });
 
+  const vendorCount = vendorsData?.data?.pageItems?.length;
   // Transform API data for the table
   const vendorRows =
     vendorsData?.data?.pageItems?.map((vendor, index) => ({
