@@ -11,13 +11,13 @@ import {
   ModalBody,
   ModalCloseButton,
   Center,
-  useToast,
   AlertDialog,
   AlertDialogBody,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogContent,
   AlertDialogOverlay,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import SearchInput from "@components/SearchInput";
@@ -25,30 +25,52 @@ import Tables from "@components/table";
 import { GridColDef } from "@mui/x-data-grid";
 import { FiTrash2, FiPlus } from "react-icons/fi";
 import { FaRegEdit } from "react-icons/fa";
-import { useState, useRef, SetStateAction } from "react";
+import { useState, useRef } from "react";
 import AddTeamMate from "@pages/admin/addTeamMember";
 import EditTeamMate from "@pages/admin/editTeamMember";
 import { waivedAdminApi } from "@services/api";
 import Spinner from "@components/spinner";
+import { toast } from "react-toastify";
+
+// Define types upfront
+interface Member {
+  fullName: string;
+  emailAddress: string;
+  id: string;
+  phoneNumber: string;
+}
+
+interface TeamMemberRow {
+  "S/N": number;
+  Name: string;
+  Email: string;
+  id: string | number;
+  fullName: string;
+  emailAddress: string;
+  phoneNumber: string;
+}
 
 const TeamMembers = () => {
-  interface Member {
-    fullName: string;
-    emailAddress: string;
-    id: string;
-    phoneNumber: string;
-  }
-
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
-  const [selectedTeamMate, setSelectedTeamMate] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState<boolean>(false);
+  const [selectedTeamMate, setSelectedTeamMate] =
+    useState<TeamMemberRow | null>(null);
   const [teamMateToDelete, setTeamMateToDelete] = useState<Member | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const cancelRef = useRef();
-  const toast = useToast();
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearchActive, setIsSearchActive] = useState<boolean>(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
   const queryClient = useQueryClient();
+
+  // Responsive values
+  const buttonSize = useBreakpointValue({ base: "sm", md: "md" });
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const searchBoxWidth = useBreakpointValue({
+    base: "100%",
+    sm: "100%",
+    md: "320px",
+  });
 
   // Fetch team members data using useQuery
   const {
@@ -57,16 +79,12 @@ const TeamMembers = () => {
     isError,
   } = useQuery({
     queryKey: ["teamMembers"],
-    queryFn: waivedAdminApi.getTeamMates,
+    queryFn: () => waivedAdminApi.getTeamMates(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
   });
 
-  interface Member {
-    fullName: string;
-    emailAddress: string;
-    id: string;
-    phoneNumber: string;
-  }
-  const teamMembersRows =
+  const teamMembersRows: TeamMemberRow[] =
     teamMembersData?.data?.pageItems?.map((member: Member, index: number) => ({
       "S/N": index + 1,
       Name: member.fullName,
@@ -79,112 +97,97 @@ const TeamMembers = () => {
     })) || [];
 
   // Function to filter team members based on search query
-  const getFilteredMembers = () => {
+  const getFilteredMembers = (): TeamMemberRow[] => {
     if (!isSearchActive || !searchQuery.trim() || !teamMembersRows.length) {
       return teamMembersRows;
     }
 
     const lowercasedSearch = searchQuery.toLowerCase();
     return teamMembersRows.filter(
-      (member: Member) =>
+      (member) =>
         member.fullName.toLowerCase().includes(lowercasedSearch) ||
         member.emailAddress.toLowerCase().includes(lowercasedSearch)
     );
   };
 
   // Delete team member mutation
-  const deleteTeamMateMutation = useMutation({
-    mutationFn: (id: string) => {
-      return waivedAdminApi.deleteTeamMate(id);
-    },
+  const { mutate: deleteTeamMate, isPending: isDeleting } = useMutation({
+    mutationFn: (id: string) => waivedAdminApi.deleteTeamMate(id),
     onSuccess: () => {
-      toast({
-        title: "Team member deleted",
-        description: "Team member has been deleted successfully",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
-
-      // Refresh the team members data
+      toast.success("Team member deleted");
       queryClient.invalidateQueries({ queryKey: ["teamMembers"] });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to delete team member",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    },
-    onSettled: () => {
       setIsDeleteAlertOpen(false);
       setTeamMateToDelete(null);
+    },
+    onError: (error) => {
+      toast.error("Failed to delete team member");
+      console.error("Error deleting team member:", error);
+      setIsDeleteAlertOpen(false);
     },
   });
 
   // Function to handle successful team member addition
-  const handleAddSuccess = () => {
+  const handleAddSuccess = (): void => {
     setIsAddModalOpen(false);
-    // Refresh the team members data
     queryClient.invalidateQueries({ queryKey: ["teamMembers"] });
   };
 
   // Function to handle successful team member edit
-  const handleEditSuccess = () => {
+  const handleEditSuccess = (): void => {
     setIsEditModalOpen(false);
-    // Refresh the team members data
     queryClient.invalidateQueries({ queryKey: ["teamMembers"] });
   };
 
   // Function to handle edit button click
-  const handleEditClick = (teamMate: SetStateAction<null>) => {
+  const handleEditClick = (teamMate: TeamMemberRow): void => {
     setSelectedTeamMate(teamMate);
     setIsEditModalOpen(true);
   };
 
   // Function to handle delete button click
-  const handleDeleteClick = (teamMate: SetStateAction<null>) => {
-    setTeamMateToDelete(teamMate);
+  const handleDeleteClick = (teamMate: TeamMemberRow): void => {
+    setTeamMateToDelete(teamMate as unknown as Member);
     setIsDeleteAlertOpen(true);
   };
 
   // Function to confirm deletion
-  const confirmDelete = () => {
+  const confirmDelete = (): void => {
     if (teamMateToDelete && teamMateToDelete.id) {
-      deleteTeamMateMutation.mutate(teamMateToDelete.id);
+      deleteTeamMate(teamMateToDelete.id);
     }
   };
 
   // Handle search
-  const handleSearch = (value: SetStateAction<string>) => {
+  const handleSearch = (value: string): void => {
     setSearchQuery(value);
     setIsSearchActive(true);
   };
 
-  // Table columns
+  // Table columns with responsive configuration
   const columns: GridColDef[] = [
     {
       field: "S/N",
       headerName: "S/N",
       width: 70,
       disableColumnMenu: true,
-      flex: 0.5,
+      flex: isMobile ? 0 : 0.5,
+      minWidth: 50,
     },
     {
       field: "Name",
       headerName: "Name",
       width: 200,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 120,
     },
     {
       field: "Email",
       headerName: "Email",
       width: 250,
       disableColumnMenu: true,
-      flex: 1.5,
+      flex: isMobile ? 0 : 1.5,
+      minWidth: 150,
     },
     {
       field: "actions",
@@ -192,6 +195,8 @@ const TeamMembers = () => {
       width: 150,
       disableColumnMenu: true,
       align: "center",
+      flex: isMobile ? 0 : 0.8,
+      minWidth: 100,
       renderCell: (params) => (
         <HStack
           spacing={3}
@@ -203,22 +208,22 @@ const TeamMembers = () => {
             icon={<FaRegEdit />}
             color="green.500"
             variant="ghost"
-            size="sm"
+            size={buttonSize}
             aria-label="Edit"
             onClick={(e) => {
               e.stopPropagation();
-              handleEditClick(params.row);
+              handleEditClick(params.row as TeamMemberRow);
             }}
           />
           <IconButton
             icon={<FiTrash2 />}
             color="red.500"
             variant="ghost"
-            size="sm"
+            size={buttonSize}
             aria-label="Delete"
             onClick={(e) => {
               e.stopPropagation();
-              handleDeleteClick(params.row);
+              handleDeleteClick(params.row as TeamMemberRow);
             }}
           />
         </HStack>
@@ -227,27 +232,35 @@ const TeamMembers = () => {
   ];
 
   return (
-    <Box w={["100%", "100%"]}>
+    <Box w="100%">
       {/* Team Members Header */}
-      <Box display={"flex"} justifyContent="space-between">
-        <Text fontWeight={"bold"} pe="2" color={"black"}>
+      <Flex
+        justifyContent="space-between"
+        alignItems="center"
+        mt={[3, 4, 5]}
+        mb={[4, 5, 6]}
+        flexDirection={{ base: "column", sm: "row" }}
+        gap={{ base: 3, sm: 0 }}
+      >
+        <Text fontWeight="bold" fontSize={["md", "lg"]} color="black">
           Team Members
         </Text>
         <Button
           leftIcon={<FiPlus />}
           borderRadius="5"
           colorScheme="teal"
+          size={buttonSize}
           onClick={() => {
             setIsAddModalOpen(true);
           }}
         >
           Add New
         </Button>
-      </Box>
+      </Flex>
 
       {/* Search Section */}
-      <Flex mt="6" mb="6">
-        <Box w="100%" h="40px" maxW="320px">
+      <Flex mt={[4, 5, 6]} mb={[4, 5, 6]}>
+        <Box w="100%" h="40px" maxW={searchBoxWidth}>
           <SearchInput
             placeHolder="Search for a member"
             showSelect={false}
@@ -257,7 +270,7 @@ const TeamMembers = () => {
       </Flex>
 
       {/* Table */}
-      <Box mt={["10px", "24px"]}>
+      <Box mt={["10px", "16px", "24px"]} overflowX="auto">
         {isPending ? (
           <Center py={10}>
             <Spinner />
@@ -282,7 +295,14 @@ const TeamMembers = () => {
 
         {/* Pagination */}
         {!isPending && !isError && getFilteredMembers().length > 0 && (
-          <Flex justify="space-between" align="center" mt={4} p={2}>
+          <Flex
+            justify={{ base: "center", sm: "space-between" }}
+            align="center"
+            mt={4}
+            p={2}
+            flexDirection={{ base: "column", sm: "row" }}
+            gap={{ base: 3, sm: 0 }}
+          >
             <Flex align="center">
               <Text fontSize="sm" color="gray.600" mr={2}>
                 Rows per page: 10
@@ -313,11 +333,16 @@ const TeamMembers = () => {
       </Box>
 
       {/* Modal for AddTeamMate */}
-      <Modal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)}>
-        <ModalOverlay />
-        <ModalContent maxW="400px">
+      <Modal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        size={{ base: "sm", md: "md" }}
+        isCentered
+      >
+        <ModalOverlay backdropFilter="blur(5px)" />
+        <ModalContent maxW={{ base: "90%", md: "400px" }}>
           <ModalCloseButton />
-          <ModalBody padding="32px">
+          <ModalBody padding={{ base: "24px", md: "32px" }}>
             <AddTeamMate onSuccess={handleAddSuccess} />
           </ModalBody>
         </ModalContent>
@@ -328,14 +353,19 @@ const TeamMembers = () => {
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
+          size={{ base: "sm", md: "md" }}
+          isCentered
         >
-          <ModalOverlay />
-          <ModalContent maxW="400px">
+          <ModalOverlay backdropFilter="blur(5px)" />
+          <ModalContent maxW={{ base: "90%", md: "400px" }}>
             <ModalCloseButton />
-            <ModalBody padding="32px">
+            <ModalBody padding={{ base: "24px", md: "32px" }}>
               <EditTeamMate
                 onSuccess={handleEditSuccess}
-                teamMateData={selectedTeamMate}
+                teamMateData={{
+                  ...selectedTeamMate,
+                  id: String(selectedTeamMate.id),
+                }}
                 onClose={() => setIsEditModalOpen(false)}
               />
             </ModalBody>
@@ -349,9 +379,14 @@ const TeamMembers = () => {
         leastDestructiveRef={cancelRef}
         onClose={() => setIsDeleteAlertOpen(false)}
         isCentered
+        size={{ base: "sm", md: "md" }}
       >
         <AlertDialogOverlay bg="blackAlpha.300" backdropFilter="blur(5px)">
-          <AlertDialogContent borderRadius="md" boxShadow="xl" mx={4}>
+          <AlertDialogContent
+            borderRadius="md"
+            boxShadow="xl"
+            mx={{ base: 4, md: "auto" }}
+          >
             <AlertDialogHeader
               fontSize="lg"
               fontWeight="bold"
@@ -388,7 +423,7 @@ const TeamMembers = () => {
                 onClick={confirmDelete}
                 ml={3}
                 fontSize="sm"
-                isLoading={deleteTeamMateMutation.isPending}
+                isLoading={isDeleting}
                 borderRadius="md"
                 loadingText="Deleting..."
                 _hover={{ bg: "red.600" }}

@@ -5,31 +5,48 @@ import {
   Text,
   Flex,
   Button,
-  IconButton,
   useDisclosure,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import SearchInput from "@components/SearchInput";
 import Tables from "@components/table";
 import { GridColDef } from "@mui/x-data-grid";
-import { FiEdit2 } from "react-icons/fi";
-
 import ViewUrgentPurchaseRequest from "./viewUrgentPurchaseRequest";
+
+interface RequestType {
+  id: number | string;
+  "S/N": number;
+  Date: string;
+  Product: string;
+  Customer: string;
+  "Vendor ID": string;
+  price: number;
+  vendorId: string;
+  customerName: string;
+  customerId: string;
+  deliveryInfo: string;
+  image?: string;
+}
 
 const UrgentPurchaseRequests = () => {
   // Modal state
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState<RequestType | null>(
+    null
+  );
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearchActive, setIsSearchActive] = useState(false);
 
-  // Pagination state
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Not using these in pagination functionality yet, but keeping currentPage for future implementation
+  const [currentPage] = useState(1);
+
+  // Responsive layout settings
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
   // Table data for urgent purchase requests
-  const requestRows = [
+  const requestRows: RequestType[] = [
     {
       "S/N": 1,
       Date: "31/12/2025",
@@ -100,7 +117,7 @@ const UrgentPurchaseRequests = () => {
   ];
 
   // Function to filter requests based on search query
-  const getFilteredRequests = () => {
+  const getFilteredRequests = (): RequestType[] => {
     if (!isSearchActive || !searchQuery.trim() || !requestRows.length) {
       return requestRows;
     }
@@ -118,68 +135,78 @@ const UrgentPurchaseRequests = () => {
   };
 
   // Handle search
-  const handleSearch = (value) => {
+  const handleSearch = (value: string) => {
     setSearchQuery(value);
     setIsSearchActive(true);
   };
 
-  // Table columns
+  // Table columns with responsive configuration
   const columns: GridColDef[] = [
     {
       field: "S/N",
       headerName: "S/N",
       width: 70,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 0.5,
+      minWidth: 50,
     },
     {
       field: "Date",
       headerName: "Date",
       width: 120,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 90,
     },
     {
       field: "Product",
       headerName: "Product",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1.2,
+      minWidth: 120,
     },
     {
       field: "Customer",
       headerName: "Customer",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 120,
     },
     {
       field: "Vendor ID",
       headerName: "Vendor ID",
       width: 120,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 0.8,
+      minWidth: 100,
     },
   ];
 
-  const handleRowClick = (params) => {
+  const handleRowClick = (params: any) => {
     // Set the selected request and open the modal
     setSelectedRequest(params.row);
     onOpen();
   };
 
   return (
-    <Box w={["100%", "100%"]}>
+    <Box w="100%">
       {/* Urgent Purchase Requests Header */}
-      <Box display={"flex"} justifyContent="space-between">
-        <Text fontWeight={"bold"} pe="2" color={"black"}>
+      <Box
+        display="flex"
+        mt={[3, 4, 5]}
+        mb={[4, 5, 6]}
+        justifyContent="space-between"
+      >
+        <Text fontWeight="bold" fontSize={["md", "lg"]} color="black">
           Urgent Purchase Requests
         </Text>
       </Box>
 
       {/* Search Section */}
-      <Flex mt="6" mb="6">
-        <Box w="100%" h="40px" maxW="320px">
+      <Flex mt={[4, 5, 6]} mb={[4, 5, 6]}>
+        <Box w="100%" h="40px" maxW={["100%", "100%", "320px"]}>
           <SearchInput
             placeHolder="Search requests"
             showSelect={false}
@@ -189,7 +216,7 @@ const UrgentPurchaseRequests = () => {
       </Flex>
 
       {/* Table */}
-      <Box mt={["10px", "24px"]}>
+      <Box mt={["10px", "16px", "24px"]} overflowX="auto">
         {getFilteredRequests().length === 0 ? (
           <Box textAlign="center" py={10}>
             <Text>
@@ -208,7 +235,14 @@ const UrgentPurchaseRequests = () => {
 
         {/* Pagination */}
         {getFilteredRequests().length > 0 && (
-          <Flex justify="space-between" align="center" mt={4} p={2}>
+          <Flex
+            justify={["center", "space-between"]}
+            align="center"
+            mt={4}
+            p={2}
+            flexDirection={["column", "row"]}
+            gap={[3, 0]}
+          >
             <Flex align="center">
               <Text fontSize="sm" color="gray.600" mr={2}>
                 Rows per page: 10

@@ -11,6 +11,7 @@ import {
   ModalContent,
   ModalBody,
   useDisclosure,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import SearchInput from "@components/SearchInput";
 import Tables from "@components/table";
@@ -21,26 +22,38 @@ import { waivedAdminApi } from "@services/api";
 import Spinner from "@components/spinner";
 import ViewVendor from "./viewVendorDetails";
 
+interface VendorType {
+  id: number | string;
+  businessName: string;
+  phoneNumber: string;
+  lga: string;
+  email: string;
+  address: string;
+  dateAdded: string;
+  profileImage: string;
+}
+
 const Vendors = () => {
-  // Pagination state
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Not using these in pagination functionality yet, but keeping currentPage for future implementation
+  const [currentPage] = useState(1);
   const toast = useToast();
+
+  // Responsive values
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
   // Modal state
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [selectedVendor, setSelectedVendor] = useState<VendorType | null>(null);
 
   // Fetch vendors data using useQuery
   const {
     data: vendorsData,
     isLoading,
     isError,
-    error,
   } = useQuery({
     queryKey: ["vendors"],
     queryFn: waivedAdminApi.getVendorAndProducts,
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error?.data?.message || "Failed to fetch vendors",
@@ -50,11 +63,10 @@ const Vendors = () => {
       });
     },
   });
-  console.log("vendorsData", vendorsData);
 
   // Transform API data for the table
   const vendorRows =
-    vendorsData?.data?.pageItems?.map((vendor, index) => ({
+    vendorsData?.data?.pageItems?.map((vendor: any, index: number) => ({
       "S/N": index + 1,
       Vendor: vendor.name || vendor.vendorName || "N/A",
       LGA: vendor.lga || "N/A",
@@ -65,41 +77,46 @@ const Vendors = () => {
       address: vendor.address || "N/A",
       dateAdded: vendor.dateAdded || new Date().toISOString(),
       profileImage: vendor.profileImage || "",
+      userAddress: vendor.address || "N/A", // ensuring this field is included for the modal
     })) || [];
 
-  // Table columns
+  // Table columns with responsive configuration
   const columns: GridColDef[] = [
     {
       field: "S/N",
       headerName: "S/N",
       width: 70,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 0.5,
+      minWidth: 50,
     },
     {
       field: "Vendor",
       headerName: "Vendor",
       width: 200,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1.5,
+      minWidth: 120,
     },
     {
       field: "LGA",
       headerName: "LGA",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 80,
     },
     {
       field: "Phone Number",
       headerName: "Phone Number",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 120,
     },
   ];
 
-  const handleRowClick = (params) => {
+  const handleRowClick = (params: any) => {
     console.log(params);
     // Format the vendor data for the modal
     const vendor = {
@@ -118,7 +135,7 @@ const Vendors = () => {
   };
 
   // Helper function to format date
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
       return `${date.toLocaleDateString("en-US", {
@@ -138,17 +155,22 @@ const Vendors = () => {
   };
 
   return (
-    <Box w={["100%", "100%"]}>
+    <Box w="100%">
       {/* Vendors List Header */}
-      <Box display={"flex"} mt={5} mb={6} justifyContent="space-between">
-        <Text fontWeight={"bold"} fontSize="lg" color={"black"}>
+      <Box
+        display="flex"
+        mt={[3, 4, 5]}
+        mb={[4, 5, 6]}
+        justifyContent="space-between"
+      >
+        <Text fontWeight="bold" fontSize={["md", "lg"]} color="black">
           Vendors List
         </Text>
       </Box>
 
       {/* Search Section */}
-      <Flex mt="6" mb="6">
-        <Box w="100%" h="40px" maxW="320px">
+      <Flex mt={[4, 5, 6]} mb={[4, 5, 6]}>
+        <Box w="100%" h="40px" maxW={["100%", "100%", "320px"]}>
           <SearchInput
             placeHolder="Search for a vendor"
             showSelect={true}
@@ -158,7 +180,7 @@ const Vendors = () => {
       </Flex>
 
       {/* Table */}
-      <Box mt={["10px", "24px"]}>
+      <Box mt={["10px", "16px", "24px"]} overflowX="auto">
         {isLoading ? (
           <Center py={10}>
             <Spinner />
@@ -183,7 +205,14 @@ const Vendors = () => {
 
         {/* Pagination */}
         {!isLoading && !isError && vendorRows.length > 0 && (
-          <Flex justify="space-between" align="center" mt={4} p={2}>
+          <Flex
+            justify={["center", "space-between"]}
+            align="center"
+            mt={4}
+            p={2}
+            flexDirection={["column", "row"]}
+            gap={[3, 0]}
+          >
             <Flex align="center">
               <Text fontSize="sm" color="gray.600" mr={2}>
                 Rows per page: 10
@@ -215,7 +244,7 @@ const Vendors = () => {
       {/* Vendor Details Modal */}
       <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">
         <ModalOverlay backdropFilter="blur(5px)" />
-        <ModalContent borderRadius="12px" maxW="450px">
+        <ModalContent borderRadius="12px" maxW={["90%", "450px"]}>
           <ModalBody p={0}>
             <ViewVendor vendor={selectedVendor} onClose={onClose} />
           </ModalBody>

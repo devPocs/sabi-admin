@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import {
   Box,
-  Heading,
-  HStack,
   Text,
   Flex,
   Button,
@@ -13,6 +11,8 @@ import {
   ModalContent,
   ModalBody,
   useDisclosure,
+  HStack,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import SearchInput from "@components/SearchInput";
@@ -24,26 +24,39 @@ import { waivedAdminApi } from "@services/api";
 import Spinner from "@components/spinner";
 import ViewComplaint from "./viewComplaints";
 
+interface ComplaintType {
+  id: number | string;
+  complaintId: string;
+  sender: string;
+  description: string;
+  vendorId: string;
+  dateSent: string;
+  status: string;
+}
+
 const Complaints = () => {
-  // Pagination state
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Not using these in pagination functionality yet, but keeping them for future implementation
+  const [currentPage] = useState(1);
   const toast = useToast();
+
+  // Responsive layout settings
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const descriptionWidth = useBreakpointValue({ base: 200, sm: 250, md: 300 });
 
   // Modal state
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [selectedComplaint, setSelectedComplaint] =
+    useState<ComplaintType | null>(null);
 
   // Fetch complaints data using useQuery
   const {
     data: complaintsData,
     isLoading,
     isError,
-    error,
   } = useQuery({
     queryKey: ["customerComplaints"],
     queryFn: waivedAdminApi.getCustomerComplaints,
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error?.data?.message || "Failed to fetch complaints",
@@ -56,7 +69,7 @@ const Complaints = () => {
 
   // Transform API data for the table
   const complaintRows = complaintsData?.data?.pageItems?.map(
-    (complaint, index) => ({
+    (complaint: any, index: number) => ({
       "S/N": index + 1,
       "Complaint ID": complaint.id || `#${Math.floor(Math.random() * 10000)}`,
       Sender: complaint.sender || complaint.customerName || "N/A",
@@ -121,40 +134,44 @@ const Complaints = () => {
     },
   ];
 
-  // Table columns
+  // Table columns with responsive configuration
   const columns: GridColDef[] = [
     {
       field: "S/N",
       headerName: "S/N",
       width: 70,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 0.5,
+      minWidth: 50,
     },
     {
       field: "Complaint ID",
       headerName: "Complaint ID",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 100,
     },
     {
       field: "Sender",
       headerName: "Sender",
       width: 200,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 120,
     },
     {
       field: "Complaint Description",
       headerName: "Complaint Description",
-      width: 300,
+      width: descriptionWidth,
       disableColumnMenu: true,
-      flex: 1,
+      flex: 1.5,
+      minWidth: 150,
     },
   ];
 
   // Helper function to format date
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     try {
       const date = new Date(dateString);
       return `${date.toLocaleDateString("en-US", {
@@ -173,7 +190,7 @@ const Complaints = () => {
     }
   };
 
-  const handleRowClick = (params) => {
+  const handleRowClick = (params: any) => {
     console.log(params);
     // Format the complaint data for the modal
     const complaint = {
@@ -191,26 +208,29 @@ const Complaints = () => {
   };
 
   return (
-    <Box w={["100%", "100%"]}>
+    <Box w="100%">
       {/* Complaints List Header */}
-      <Box display={"flex"} mt="" justifyContent="space-between">
-        <Text fontWeight={"bold"} pe="2" color={"black"}>
+      <Box
+        display="flex"
+        mt={[2, 3, 4]}
+        mb={[3, 4, 5]}
+        justifyContent="space-between"
+        flexDirection={["column", "row"]}
+        gap={[2, 0]}
+      >
+        <Text fontWeight="bold" fontSize={["md", "lg"]} color="black">
           Complaints List
         </Text>
         <Link to="/all-complaints">
-          <Text
-            fontWeight={"bold"}
-            pe="2"
-            color={globalStyles.colors.green[500]}
-          >
+          <Text fontWeight="bold" pe="2" color={globalStyles.colors.green[500]}>
             View All
           </Text>
         </Link>
       </Box>
 
       {/* Search Section */}
-      <Flex mt="6" mb="6">
-        <Box w="100%" h="40px" maxW="320px">
+      <Flex mt={[4, 5, 6]} mb={[4, 5, 6]}>
+        <Box w="100%" h="40px" maxW={["100%", "100%", "320px"]}>
           <SearchInput
             placeHolder="Search for a complaint"
             showSelect={true}
@@ -221,7 +241,7 @@ const Complaints = () => {
       </Flex>
 
       {/* Table */}
-      <Box mt={["10px", "24px"]}>
+      <Box mt={["10px", "16px", "24px"]} overflowX="auto">
         {isLoading ? (
           <Center py={10}>
             <Spinner />
@@ -242,7 +262,14 @@ const Complaints = () => {
 
         {/* Pagination */}
         {!isLoading && !isError && complaintRows.length > 0 && (
-          <Flex justify="space-between" align="center" mt={4} p={2}>
+          <Flex
+            justify={["center", "space-between"]}
+            align="center"
+            mt={4}
+            p={2}
+            flexDirection={["column", "row"]}
+            gap={[3, 0]}
+          >
             <Flex align="center">
               <Text fontSize="sm" color="gray.600" mr={2}>
                 Rows per page: 10
@@ -274,7 +301,7 @@ const Complaints = () => {
       {/* Complaint Details Modal */}
       <Modal isOpen={isOpen} onClose={onClose} isCentered size="md">
         <ModalOverlay backdropFilter="blur(5px)" />
-        <ModalContent borderRadius="12px" maxW="450px">
+        <ModalContent borderRadius="12px" maxW={["90%", "450px"]}>
           <ModalBody p={0}>
             <ViewComplaint complaint={selectedComplaint} onClose={onClose} />
           </ModalBody>

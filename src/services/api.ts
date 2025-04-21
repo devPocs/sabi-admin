@@ -9,6 +9,7 @@ import { IILoginValues } from "@interface/IloginValues";
 import { IWaivedCustomerSignUp } from "@interface/IWaivedCustomerSignUp";
 import { IWaivedAddTeamMate } from "src/types";
 import { ISubscriptionPlanPayload } from "@interface/ISubscriptionPlan";
+import { IWaivedMarketDate } from "@interface/IWaivedMarketDate";
 
 export const vendorApi = {
   login: async (payload: IILoginValues) => {
@@ -296,6 +297,15 @@ export const waivedAdminApi = {
     const hash = (await asyncGetItem("token")) || "";
     return axiosInstance(hash, undefined)
       .get(serviceLinks.getAuditLog(adminId))
+      .then((res) => res.data)
+      .catch((err) => {
+        throw err?.response;
+      });
+  },
+  addWaivedMarketDate: async (payload: IWaivedMarketDate) => {
+    const hash = (await asyncGetItem("token")) || "";
+    return axiosInstance(hash, undefined)
+      .post(serviceLinks.createSubscriptionPlan, payload)
       .then((res) => res.data)
       .catch((err) => {
         throw err?.response;

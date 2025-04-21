@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Heading,
@@ -18,6 +18,7 @@ import {
   ModalContent,
   ModalBody,
   useDisclosure,
+  useBreakpointValue,
 } from "@chakra-ui/react";
 import { Link } from "react-router-dom";
 import SearchInput from "@components/SearchInput";
@@ -32,11 +33,28 @@ import WaivedMarketDate from "../addWaivedMarketDate";
 import EditWaivedMarket from "../editWaivedMarket";
 import Spinner from "@components/spinner";
 
+// Define types
+interface Vendor {
+  id: string;
+  name?: string;
+  vendorName?: string;
+  lga?: string;
+  phoneNumber?: string;
+}
+
+interface VendorRow {
+  "S/N": number;
+  Vendor: string;
+  LGA: string;
+  "Phone Number": string;
+  id: string | number;
+}
+
 const Home = () => {
   // State for waived market date
-  const [marketDate, setMarketDate] = useState("Nov 12, 2024");
-  const [marketVenue, setMarketVenue] = useState("");
-  const [hasMarketDate, setHasMarketDate] = useState(true);
+  const [marketDate, setMarketDate] = useState<string>("Nov 12, 2024");
+  const [marketVenue, setMarketVenue] = useState<string>("");
+  const [hasMarketDate, setHasMarketDate] = useState<boolean>(true);
 
   // Modal state for adding and editing dates
   const {
@@ -51,17 +69,15 @@ const Home = () => {
     onClose: onEditModalClose,
   } = useDisclosure();
 
-  // Sample data for stats cards
-
-  const urgentPurchasesCount = 200;
-
-  // Pagination state
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
   const toast = useToast();
 
+  // Responsive values
+  const cardSpacing = useBreakpointValue({ base: 4, md: 6 });
+  const modalSize = useBreakpointValue({ base: "sm", md: "md" });
+  const isMobile = useBreakpointValue({ base: true, md: false });
+
   // Handle add waived market date
-  const handleAddMarketDate = (date: string, venue: string) => {
+  const handleAddMarketDate = (date: string, venue: string): void => {
     // Format the date for display
     const formattedDate = new Date(date).toLocaleDateString("en-US", {
       month: "short",
@@ -85,7 +101,7 @@ const Home = () => {
   };
 
   // Handle update waived market date
-  const handleUpdateMarketDate = (date: string, venue: string) => {
+  const handleUpdateMarketDate = (date: string, venue: string): void => {
     // Format the date for display
     const formattedDate = new Date(date).toLocaleDateString("en-US", {
       month: "short",
@@ -110,13 +126,13 @@ const Home = () => {
   // Fetch vendors data using useQuery
   const {
     data: vendorsData,
-    isLoading,
-    isError,
-    error,
+    isLoading: isVendorsLoading,
+    isError: isVendorsError,
   } = useQuery({
     queryKey: ["vendors"],
-    queryFn: waivedAdminApi.getVendorAndProducts,
-    onError: (error) => {
+    queryFn: () => waivedAdminApi.getVendorAndProducts(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    onError: (error: any) => {
       toast({
         title: "Error",
         description: error?.data?.message || "Failed to fetch vendors",
@@ -126,18 +142,21 @@ const Home = () => {
       });
     },
   });
+
+  // Fetch urgent products data
   const { data: urgentProductsData } = useQuery({
-    queryKey: ["urgent products"],
-    queryFn: waivedAdminApi.getUrgentPurchaseWaivedProducts,
-    Success: () => {
-      console.log(urgentProductsData);
-    },
+    queryKey: ["urgentProducts"],
+    queryFn: () => waivedAdminApi.getUrgentPurchaseWaivedProducts(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const vendorCount = vendorsData?.data?.pageItems?.length;
+  // Calculate vendor count and urgent purchases count
+  const vendorCount = vendorsData?.data?.pageItems?.length || 0;
+  const urgentPurchasesCount = urgentProductsData?.data?.length || 0;
+
   // Transform API data for the table
-  const vendorRows =
-    vendorsData?.data?.pageItems?.map((vendor, index) => ({
+  const vendorRows: VendorRow[] =
+    vendorsData?.data?.pageItems?.map((vendor: Vendor, index: number) => ({
       "S/N": index + 1,
       Vendor: vendor.name || vendor.vendorName || "N/A",
       LGA: vendor.lga || "N/A",
@@ -145,80 +164,97 @@ const Home = () => {
       id: vendor.id || index,
     })) || [];
 
-  // Table columns
+  // Table columns with responsive configuration
   const columns: GridColDef[] = [
     {
       field: "S/N",
       headerName: "S/N",
       width: 70,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 0.5,
+      minWidth: 50,
     },
     {
       field: "Vendor",
       headerName: "Vendor",
       width: 200,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1.2,
+      minWidth: 120,
     },
     {
       field: "LGA",
       headerName: "LGA",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 0.8,
+      minWidth: 80,
     },
     {
       field: "Phone Number",
       headerName: "Phone Number",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 120,
     },
   ];
 
-  const handleRowClick = (params) => {
+  const handleRowClick = (params: any): void => {
     console.log(params);
   };
 
   return (
-    <Box w={["100%", "100%"]}>
+    <Box w="100%">
       {/* Info Cards Section */}
-      <Box mt={["25px", "20px"]}>
-        <Grid templateColumns={{ base: "1fr", md: "repeat(3, 1fr)" }} gap={6}>
+      <Box mt={{ base: "15px", md: "20px" }}>
+        <Grid
+          templateColumns={{
+            base: "1fr",
+            sm: "repeat(2, 1fr)",
+            md: "repeat(3, 1fr)",
+          }}
+          gap={cardSpacing}
+        >
           {/* Next Waived Market Card */}
-          <GridItem>
+          <GridItem colSpan={{ base: 1, sm: 2, md: 1 }}>
             <Card
               width="100%"
               borderRadius="8px"
-              p={4}
+              p={{ base: 3, md: 4 }}
               bg="white"
               boxShadow="sm"
               position="relative"
             >
               <CardBody
-                overflow={"hidden"}
-                display={"flex"}
-                flexDirection={"column"}
+                overflow="hidden"
+                display="flex"
+                flexDirection="column"
                 p={0}
+                position="relative"
               >
                 <HStack
-                  alignItems={"flex-start"}
-                  justifyContent={"space-between"}
+                  alignItems="flex-start"
+                  justifyContent="space-between"
+                  mb={hasMarketDate ? 6 : 0}
                 >
                   <Box>
                     <Text fontSize="sm" color="gray.700">
                       Waived Market
                     </Text>
                     {hasMarketDate ? (
-                      <Heading fontWeight="600" fontSize="24px" mt={1}>
+                      <Heading
+                        fontWeight="600"
+                        fontSize={{ base: "20px", md: "24px" }}
+                        mt={1}
+                      >
                         {marketDate}
                       </Heading>
                     ) : (
                       <>
                         <Heading
                           fontWeight="600"
-                          fontSize="24px"
+                          fontSize={{ base: "20px", md: "24px" }}
                           mt={1}
                           color="gray.700"
                         >
@@ -233,7 +269,11 @@ const Home = () => {
                           fontSize="sm"
                           fontWeight="normal"
                           color={globalStyles.colors.green[500]}
-                          onClick={onAddModalOpen}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onAddModalOpen();
+                          }}
                           px={0}
                           _hover={{ textDecoration: "underline" }}
                         >
@@ -243,22 +283,31 @@ const Home = () => {
                     )}
                   </Box>
                   <Box
-                    display={"flex"}
+                    display="flex"
                     width={10}
                     height={10}
                     bg="blue.50"
                     borderRadius="md"
-                    alignItems={"center"}
-                    justifyContent={"center"}
+                    alignItems="center"
+                    justifyContent="center"
                     color="blue.500"
                     cursor="pointer"
-                    onClick={onAddModalOpen}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onAddModalOpen();
+                    }}
                   >
                     <FaRegCalendarAlt size={20} />
                   </Box>
                 </HStack>
                 {hasMarketDate && (
-                  <Box position="absolute" bottom={3} right={20}>
+                  <Flex
+                    position="static"
+                    mt={2}
+                    alignItems="center"
+                    justifyContent="flex-end"
+                  >
                     <IconButton
                       icon={<FiEdit2 size={16} />}
                       aria-label="Edit date"
@@ -271,12 +320,17 @@ const Home = () => {
                       _hover={{
                         bg: "green.50",
                       }}
-                      onClick={onEditModalOpen}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onEditModalOpen();
+                      }}
+                      mr={2}
                     />
                     <Text fontSize="sm" color="green.500">
                       Edit
                     </Text>
-                  </Box>
+                  </Flex>
                 )}
               </CardBody>
             </Card>
@@ -287,36 +341,37 @@ const Home = () => {
             <Card
               width="100%"
               borderRadius="8px"
-              p={4}
+              p={{ base: 3, md: 4 }}
               bg="white"
               boxShadow="sm"
             >
               <CardBody
-                overflow={"hidden"}
-                display={"flex"}
-                flexDirection={"column"}
+                overflow="hidden"
+                display="flex"
+                flexDirection="column"
                 p={0}
               >
-                <HStack
-                  alignItems={"flex-start"}
-                  justifyContent={"space-between"}
-                >
+                <HStack alignItems="flex-start" justifyContent="space-between">
                   <Box>
                     <Text fontSize="sm" color="gray.700">
                       Number of Vendors
                     </Text>
-                    <Heading fontWeight="600" fontSize="24px" mt={1}>
+                    <Heading
+                      fontWeight="600"
+                      fontSize={{ base: "20px", md: "24px" }}
+                      mt={1}
+                    >
                       {vendorCount}
                     </Heading>
                   </Box>
                   <Box
-                    display={"flex"}
+                    display="flex"
                     width={10}
                     height={10}
                     bg="green.50"
                     borderRadius="md"
-                    alignItems={"center"}
-                    justifyContent={"center"}
+                    alignItems="center"
+                    justifyContent="center"
                     color="green.500"
                   >
                     <FiUsers size={20} />
@@ -331,36 +386,37 @@ const Home = () => {
             <Card
               width="100%"
               borderRadius="8px"
-              p={4}
+              p={{ base: 3, md: 4 }}
               bg="white"
               boxShadow="sm"
             >
               <CardBody
-                overflow={"hidden"}
-                display={"flex"}
-                flexDirection={"column"}
+                overflow="hidden"
+                display="flex"
+                flexDirection="column"
                 p={0}
               >
-                <HStack
-                  alignItems={"flex-start"}
-                  justifyContent={"space-between"}
-                >
+                <HStack alignItems="flex-start" justifyContent="space-between">
                   <Box>
                     <Text fontSize="sm" color="gray.700">
                       No. of Urgent Purchases
                     </Text>
-                    <Heading fontWeight="600" fontSize="24px" mt={1}>
+                    <Heading
+                      fontWeight="600"
+                      fontSize={{ base: "20px", md: "24px" }}
+                      mt={1}
+                    >
                       {urgentPurchasesCount}
                     </Heading>
                   </Box>
                   <Box
-                    display={"flex"}
+                    display="flex"
                     width={10}
                     height={10}
                     bg="orange.50"
                     borderRadius="md"
-                    alignItems={"center"}
-                    justifyContent={"center"}
+                    alignItems="center"
+                    justifyContent="center"
                     color="orange.500"
                   >
                     <FiShoppingBag size={20} />
@@ -373,24 +429,34 @@ const Home = () => {
       </Box>
 
       {/* Vendors List Section */}
-      <Box display={"flex"} mt="10" justifyContent="space-between">
-        <Text fontWeight={"bold"} pe="2" color={"black"}>
+      <Flex
+        mt={{ base: 6, md: 10 }}
+        mb={{ base: 3, md: 5 }}
+        justifyContent="space-between"
+        alignItems={{ base: "flex-start", sm: "center" }}
+        flexDirection={{ base: "column", sm: "row" }}
+        gap={{ base: 2, sm: 0 }}
+      >
+        <Text fontWeight="bold" fontSize={["md", "lg"]} color="black">
           Vendors List
         </Text>
         <Link to="/vendors">
-          <Text
-            fontWeight={"bold"}
-            pe="2"
-            color={globalStyles.colors.green[500]}
-          >
+          <Text fontWeight="bold" color={globalStyles.colors.green[500]}>
             View All
           </Text>
         </Link>
-      </Box>
+      </Flex>
 
-      {/* Search Section */}
-      <Flex mt="6" mb="6">
-        <Box w="100%" h="40px" maxW="320px">
+      {/* Search Section - Improved responsiveness */}
+      <Flex
+        mt={{ base: 3, md: 5 }}
+        mb={{ base: 3, md: 5 }}
+        flexDirection={{ base: "column", sm: "row" }}
+        alignItems="center"
+        gap={3}
+        width="100%"
+      >
+        <Box flex="1" minW={0} maxW={{ base: "100%", sm: "320px" }}>
           <SearchInput
             placeHolder="Search for a vendor"
             showSelect={true}
@@ -400,12 +466,12 @@ const Home = () => {
       </Flex>
 
       {/* Table */}
-      <Box mt={["10px", "24px"]}>
-        {isLoading ? (
+      <Box mt={{ base: 3, md: 4 }} overflowX="auto">
+        {isVendorsLoading ? (
           <Center py={10}>
             <Spinner size="xl" color="teal" />
           </Center>
-        ) : isError ? (
+        ) : isVendorsError ? (
           <Center py={10}>
             <Text color="red.500">
               Error loading vendors. Please try again.
@@ -424,8 +490,15 @@ const Home = () => {
         )}
 
         {/* Pagination */}
-        {!isLoading && !isError && vendorRows.length > 0 && (
-          <Flex justify="space-between" align="center" mt={4} p={2}>
+        {!isVendorsLoading && !isVendorsError && vendorRows.length > 0 && (
+          <Flex
+            justify={{ base: "center", sm: "space-between" }}
+            align="center"
+            mt={4}
+            p={2}
+            flexDirection={{ base: "column", sm: "row" }}
+            gap={{ base: 3, sm: 0 }}
+          >
             <Flex align="center">
               <Text fontSize="sm" color="gray.600" mr={2}>
                 Rows per page: 10
@@ -460,10 +533,10 @@ const Home = () => {
         isOpen={isAddModalOpen}
         onClose={onAddModalClose}
         isCentered
-        size="md"
+        size={modalSize}
       >
         <ModalOverlay backdropFilter="blur(5px)" />
-        <ModalContent borderRadius="12px" maxW="450px">
+        <ModalContent borderRadius="12px" maxW={{ base: "90%", md: "450px" }}>
           <ModalBody p={0}>
             <WaivedMarketDate
               onClose={onAddModalClose}
@@ -478,10 +551,10 @@ const Home = () => {
         isOpen={isEditModalOpen}
         onClose={onEditModalClose}
         isCentered
-        size="md"
+        size={modalSize}
       >
         <ModalOverlay backdropFilter="blur(5px)" />
-        <ModalContent borderRadius="12px" maxW="450px">
+        <ModalContent borderRadius="12px" maxW={{ base: "90%", md: "450px" }}>
           <ModalBody p={0}>
             <EditWaivedMarket
               onClose={onEditModalClose}

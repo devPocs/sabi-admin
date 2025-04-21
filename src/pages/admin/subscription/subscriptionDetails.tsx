@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Text,
@@ -20,6 +20,9 @@ import {
   useToast,
   Spinner,
   Center,
+  useBreakpointValue,
+  VStack,
+  TableContainer,
 } from "@chakra-ui/react";
 import { FiSearch, FiArrowLeft } from "react-icons/fi";
 import { useParams, useNavigate } from "react-router-dom";
@@ -27,30 +30,42 @@ import { pageLinks } from "@services/pageLinks";
 import { waivedAdminApi } from "@services/api";
 import { useQuery } from "@tanstack/react-query";
 
+interface Subscriber {
+  id: string;
+  name: string;
+  dateTime: string;
+  amount: string;
+}
+
 const SubscriptionDetails = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const toast = useToast();
 
+  // Responsive values
+  const isMobile = useBreakpointValue({ base: true, md: false });
+  const gridColumns = useBreakpointValue({
+    base: "1fr",
+    sm: "repeat(2, 1fr)",
+    md: "repeat(3, 1fr)",
+  });
+  const tabFontSize = useBreakpointValue({ base: "xs", md: "sm" });
+  const headerFontSize = useBreakpointValue({ base: "sm", md: "md" });
+
   // State for active tab
-  const [activeTab, setActiveTab] = useState("pending");
-
-
-  const [currentPage, setCurrentPage] = useState(1);
-  
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<string>("pending");
+  const [currentPage] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Fetch subscription data using React Query
   const {
     data: subscriptionData,
     isLoading: isLoadingSubscription,
     isError: isErrorSubscription,
-    error: subscriptionError,
   } = useQuery({
     queryKey: ["subscription", id],
     queryFn: () => waivedAdminApi.getSubscriptionPlanById(id),
-    onError: (err) => {
+    onError: (err: any) => {
       toast({
         title: "Error",
         description:
@@ -62,7 +77,7 @@ const SubscriptionDetails = () => {
     },
     enabled: !!id,
   });
-  console.log("Sub data", subscriptionData);
+
   // Format subscription data
   const subscription = {
     id: id,
@@ -72,7 +87,7 @@ const SubscriptionDetails = () => {
   };
 
   // Mock subscriber data for now - replace with API call later
-  const subscribers = [
+  const subscribers: Subscriber[] = [
     {
       id: "VEND123",
       name: "John Doe",
@@ -94,7 +109,7 @@ const SubscriptionDetails = () => {
   ];
 
   // Handle tab change
-  const handleTabChange = (tab:any) => {
+  const handleTabChange = (tab: string) => {
     setActiveTab(tab);
   };
 
@@ -104,13 +119,12 @@ const SubscriptionDetails = () => {
   };
 
   // Handle search input change
-  const handleSearchChange = (e) => {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1);
   };
 
   // Handle confirm payment
-  const handleConfirmPayment = (subscriberId) => {
+  const handleConfirmPayment = (subscriberId: string) => {
     // This would be replaced with your actual API call
     toast({
       title: "Payment Confirmed",
@@ -122,7 +136,7 @@ const SubscriptionDetails = () => {
   };
 
   // Handle view receipt
-  const handleViewReceipt = (subscriberId) => {
+  const handleViewReceipt = (subscriberId: string) => {
     // This would be replaced with your actual receipt view logic
     toast({
       title: "Receipt Opened",
@@ -146,19 +160,23 @@ const SubscriptionDetails = () => {
   if (isErrorSubscription) {
     return (
       <Box w="100%">
-        <Flex justifyContent="space-between" alignItems="center" mb={6}>
-          <Box display="flex" alignItems="center">
-            <Button
-              leftIcon={<FiArrowLeft />}
-              variant="ghost"
-              onClick={goBackToPlans}
-              color="black"
-              size="md"
-            ></Button>
-            <Text fontWeight="bold" fontSize="md" color="black">
-              Back to Subscription Plans
-            </Text>
-          </Box>
+        <Flex
+          justifyContent="flex-start"
+          alignItems="center"
+          mb={6}
+          flexWrap="wrap"
+          gap={2}
+        >
+          <Button
+            leftIcon={<FiArrowLeft />}
+            variant="ghost"
+            onClick={goBackToPlans}
+            color="black"
+            size={isMobile ? "sm" : "md"}
+          ></Button>
+          <Text fontWeight="bold" fontSize={headerFontSize} color="black">
+            Back to Subscription Plans
+          </Text>
         </Flex>
         <Center minH="200px" flexDirection="column">
           <Text color="red.500" mb={4}>
@@ -175,37 +193,40 @@ const SubscriptionDetails = () => {
   return (
     <Box w="100%">
       {/* Header with back button */}
-      <Flex justifyContent="space-between" alignItems="center" mb={6}>
-        <Box display="flex" alignItems="center">
-          <Button
-            leftIcon={<FiArrowLeft />}
-            variant="ghost"
-            onClick={goBackToPlans}
-            color="black"
-            size="md"
-          ></Button>
-          <Text fontWeight="bold" fontSize="md" color="black">
-            Subscription Plan / Subscribers
-          </Text>
-        </Box>
-        <Box width="100px"></Box> {/* Empty box for even spacing */}
+      <Flex
+        justifyContent="flex-start"
+        alignItems="center"
+        mb={[4, 5, 6]}
+        flexWrap="wrap"
+        gap={2}
+      >
+        <Button
+          leftIcon={<FiArrowLeft />}
+          variant="ghost"
+          onClick={goBackToPlans}
+          color="black"
+          size={isMobile ? "sm" : "md"}
+        ></Button>
+        <Text fontWeight="bold" fontSize={headerFontSize} color="black">
+          Subscription Plan / Subscribers
+        </Text>
       </Flex>
 
       {/* Subscription summary card */}
       <Grid
-        templateColumns="repeat(3, 1fr)"
-        gap={4}
+        templateColumns={gridColumns}
+        gap={[3, 4]}
         bg="white"
-        p={6}
+        p={[4, 5, 6]}
         borderRadius="md"
-        mb={6}
+        mb={[4, 5, 6]}
         boxShadow="sm"
       >
         <GridItem>
           <Text fontSize="sm" color="gray.700" mb={1}>
             Amount
           </Text>
-          <Text fontSize="md" fontWeight="medium">
+          <Text fontSize={["sm", "md"]} fontWeight="medium">
             ₦{subscription.amount}
           </Text>
         </GridItem>
@@ -213,28 +234,37 @@ const SubscriptionDetails = () => {
           <Text fontSize="sm" color="gray.700" mb={1}>
             Frequency
           </Text>
-          <Text fontSize="md" fontWeight="medium">
+          <Text fontSize={["sm", "md"]} fontWeight="medium">
             {subscription.frequency}
           </Text>
         </GridItem>
-        <GridItem>
+        <GridItem
+          colSpan={{ base: isMobile ? 2 : 1, sm: isMobile ? 2 : 1, md: 1 }}
+        >
           <Text fontSize="sm" color="gray.700" mb={1}>
             No of Subscribers
           </Text>
-          <Text fontSize="md" fontWeight="medium">
+          <Text fontSize={["sm", "md"]} fontWeight="medium">
             {subscription.subscribers}
           </Text>
         </GridItem>
       </Grid>
 
-      {/* Tab section */}
-      <Flex mb={6} justifyContent="space-between" alignItems="center">
-        <HStack spacing={0}>
+      {/* Tab section and search - Improved responsiveness */}
+      <Flex
+        mb={[4, 5, 6]}
+        justifyContent={["flex-start", "space-between"]}
+        alignItems={["flex-start", "center"]}
+        flexDirection={["column", "row"]}
+        gap={[3, 0]}
+        width="100%"
+      >
+        <HStack spacing={0} mb={[3, 0]}>
           <Box
             as="button"
-            fontSize="sm"
+            fontSize={tabFontSize}
             py={2}
-            px={4}
+            px={3}
             bg={activeTab === "pending" ? "teal.200" : "white"}
             color={activeTab === "pending" ? "teal.700" : "gray.700"}
             borderRadius="md 0 0 md"
@@ -244,9 +274,9 @@ const SubscriptionDetails = () => {
           </Box>
           <Box
             as="button"
-            fontSize="sm"
+            fontSize={tabFontSize}
             py={2}
-            px={4}
+            px={3}
             bg={activeTab === "confirmed" ? "teal.200" : "white"}
             color={activeTab === "confirmed" ? "teal.700" : "gray.700"}
             borderRadius="0 md md 0"
@@ -257,7 +287,7 @@ const SubscriptionDetails = () => {
         </HStack>
 
         {/* Search input */}
-        <InputGroup maxW="320px">
+        <InputGroup maxW={["100%", "100%", "320px"]} width="100%">
           <InputLeftElement pointerEvents="none">
             <FiSearch color="gray.400" />
           </InputLeftElement>
@@ -266,71 +296,113 @@ const SubscriptionDetails = () => {
             placeholder="Search for a subscriber by name or ID"
             bg="white"
             borderRadius="md"
-            size="md"
+            size={isMobile ? "sm" : "md"}
             value={searchQuery}
             onChange={handleSearchChange}
           />
         </InputGroup>
       </Flex>
 
-      {/* Subscribers table */}
+      {/* Subscribers table - with horizontal scroll on mobile */}
       <Box bg="white" borderRadius="md" boxShadow="sm" overflow="hidden" mb={4}>
-        <Table variant="simple" size="md">
-          <Thead bg="gray.50">
-            <Tr>
-              <Th color="gray.700">S/N</Th>
-              <Th color="gray.700">Date & Time</Th>
-              <Th color="gray.700">Name</Th>
-              <Th color="gray.700">ID</Th>
-              <Th color="gray.700">Amount (₦)</Th>
-              <Th color="gray.700">Actions</Th>
-            </Tr>
-          </Thead>
-          <Tbody fontSize="sm">
-            {subscribers.length > 0 ? (
-              subscribers.map((subscriber, index) => (
-                <Tr key={index}>
-                  <Td>{index + 1}</Td>
-                  <Td>{subscriber.dateTime}</Td>
-                  <Td>{subscriber.name}</Td>
-                  <Td>{subscriber.id}</Td>
-                  <Td>{subscriber.amount}</Td>
-                  <Td>
-                    <HStack spacing={4}>
-                      <Link
-                        color="yellow.500"
-                        fontSize="sm"
-                        onClick={() => handleViewReceipt(subscriber.id)}
-                        cursor="pointer"
-                      >
-                        View Receipt
-                      </Link>
-                      <Link
-                        color="teal.500"
-                        fontSize="sm"
-                        onClick={() => handleConfirmPayment(subscriber.id)}
-                        cursor="pointer"
-                      >
-                        Confirm Payment
-                      </Link>
-                    </HStack>
+        <TableContainer overflowX="auto">
+          <Table variant="simple" size={isMobile ? "sm" : "md"}>
+            <Thead bg="gray.50">
+              <Tr>
+                <Th color="gray.700" fontSize={["xs", "sm"]}>
+                  S/N
+                </Th>
+                <Th color="gray.700" fontSize={["xs", "sm"]}>
+                  Date & Time
+                </Th>
+                <Th color="gray.700" fontSize={["xs", "sm"]}>
+                  Name
+                </Th>
+                <Th color="gray.700" fontSize={["xs", "sm"]}>
+                  ID
+                </Th>
+                <Th color="gray.700" fontSize={["xs", "sm"]}>
+                  Amount (₦)
+                </Th>
+                <Th color="gray.700" fontSize={["xs", "sm"]}>
+                  Actions
+                </Th>
+              </Tr>
+            </Thead>
+            <Tbody fontSize={["xs", "sm"]}>
+              {subscribers.length > 0 ? (
+                subscribers.map((subscriber, index) => (
+                  <Tr key={index}>
+                    <Td>{index + 1}</Td>
+                    <Td>{subscriber.dateTime}</Td>
+                    <Td>{subscriber.name}</Td>
+                    <Td>{subscriber.id}</Td>
+                    <Td>{subscriber.amount}</Td>
+                    <Td>
+                      {isMobile ? (
+                        <VStack align="flex-start" spacing={1}>
+                          <Link
+                            color="yellow.500"
+                            fontSize="xs"
+                            onClick={() => handleViewReceipt(subscriber.id)}
+                            cursor="pointer"
+                          >
+                            View Receipt
+                          </Link>
+                          <Link
+                            color="teal.500"
+                            fontSize="xs"
+                            onClick={() => handleConfirmPayment(subscriber.id)}
+                            cursor="pointer"
+                          >
+                            Confirm Payment
+                          </Link>
+                        </VStack>
+                      ) : (
+                        <HStack spacing={4}>
+                          <Link
+                            color="yellow.500"
+                            fontSize="sm"
+                            onClick={() => handleViewReceipt(subscriber.id)}
+                            cursor="pointer"
+                          >
+                            View Receipt
+                          </Link>
+                          <Link
+                            color="teal.500"
+                            fontSize="sm"
+                            onClick={() => handleConfirmPayment(subscriber.id)}
+                            cursor="pointer"
+                          >
+                            Confirm Payment
+                          </Link>
+                        </HStack>
+                      )}
+                    </Td>
+                  </Tr>
+                ))
+              ) : (
+                <Tr>
+                  <Td colSpan={6} textAlign="center" py={4}>
+                    No subscribers found
                   </Td>
                 </Tr>
-              ))
-            ) : (
-              <Tr>
-                <Td colSpan={6} textAlign="center" py={4}>
-                  No subscribers found
-                </Td>
-              </Tr>
-            )}
-          </Tbody>
-        </Table>
+              )}
+            </Tbody>
+          </Table>
+        </TableContainer>
       </Box>
 
       {/* Pagination */}
       {subscribers.length > 0 && (
-        <Flex justify="space-between" align="center" mt={4} p={2}>
+        <Flex
+          justify={{ base: "center", sm: "space-between" }}
+          align="center"
+          mt={4}
+          p={2}
+          flexDirection={{ base: "column", sm: "row" }}
+          gap={{ base: 3, sm: 0 }}
+        >
           <Flex align="center">
             <Text fontSize="sm" color="gray.700" mr={2}>
               Rows per page: 10

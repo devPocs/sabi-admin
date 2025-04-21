@@ -1,10 +1,18 @@
-import { Box, Heading, FormControl, useToast } from "@chakra-ui/react";
+import { Box, Heading, FormControl } from "@chakra-ui/react";
 import { Formik, Form } from "formik";
 import Inputs from "@components/inputs";
 import Buttons from "@components/button";
 import { useMutation } from "@tanstack/react-query";
 import { waivedAdminApi } from "@services/api";
 import * as Yup from "yup";
+import { toast } from "react-toastify";
+
+// Define TeamMate type for better type safety
+interface TeamMateData {
+  fullName: string;
+  emailAddress: string;
+  phoneNumber: string;
+}
 
 // Validation schema for team mate
 const TeamMateSchema = Yup.object().shape({
@@ -18,34 +26,23 @@ const TeamMateSchema = Yup.object().shape({
     .min(10, "Phone number must be at least 10 digits"),
 });
 
-const AddTeamMate = ({ onSuccess }) => {
-  const toast = useToast();
+// Properly type the component props
+interface AddTeamMateProps {
+  onSuccess: () => void;
+}
 
-  // Using useMutation for team mate creation
-  const createTeamMateMutation = useMutation({
-    mutationFn: (teamMateData: any) => waivedAdminApi.addTeamMate(teamMateData),
-    onSuccess: (data) => {
-      toast({
-        title: "Team mate added",
-        description: "Team mate has been added successfully",
-        status: "success",
-        duration: 5000,
-        isClosable: true,
-      });
-
-      // Call onSuccess callback if provided
-      if (onSuccess && typeof onSuccess === "function") {
-        onSuccess();
-      }
+const AddTeamMate = ({ onSuccess }: AddTeamMateProps) => {
+  // Using useMutation with standard React Query pattern and proper typing
+  const { mutate, isPending } = useMutation({
+    mutationFn: (teamMateData: TeamMateData) =>
+      waivedAdminApi.addTeamMate(teamMateData),
+    onSuccess: () => {
+      toast.success("Team mate added successfully!");
+      onSuccess();
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error?.data?.message || "Failed to add team mate",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
+    onError: (error) => {
+      toast.error("Failed to add team mate");
+      console.error("Error adding team mate:", error);
     },
   });
 
@@ -75,7 +72,7 @@ const AddTeamMate = ({ onSuccess }) => {
             phoneNumber: values.phoneNumber.replace(/\D/g, ""), // Remove non-digit characters
           };
 
-          createTeamMateMutation.mutate(payload);
+          mutate(payload);
           resetForm();
         }}
       >
@@ -134,12 +131,8 @@ const AddTeamMate = ({ onSuccess }) => {
                 <Box>
                   <Buttons
                     variant={"brand"}
-                    isDisabled={createTeamMateMutation.isPending}
-                    label={
-                      createTeamMateMutation.isPending
-                        ? "Adding..."
-                        : "Add Team Mate"
-                    }
+                    isDisabled={isPending}
+                    label={isPending ? "Adding..." : "Add Team Mate"}
                     type="submit"
                     width="100%"
                     height="40px"

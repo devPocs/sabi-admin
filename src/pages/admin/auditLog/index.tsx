@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { Box, Text, Flex, HStack, Button } from "@chakra-ui/react";
+import {
+  Box,
+  Text,
+  Flex,
+  HStack,
+  Button,
+  useBreakpointValue,
+} from "@chakra-ui/react";
 import SearchInput from "@components/SearchInput";
 import Tables from "@components/table";
 import { GridColDef } from "@mui/x-data-grid";
@@ -8,12 +15,20 @@ import { useQuery } from "@tanstack/react-query";
 import { useCurrentUser } from "@hooks/useCurrentUser";
 
 const AuditLog = () => {
-  // Pagination state
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
+  // Not using these in pagination functionality yet, but keeping them for future implementation
+  const [currentPage] = useState(1);
 
   const { data } = useCurrentUser();
   const adminId = data?.userInfo.userId;
+
+  // Responsive column widths
+  const activityWidth = useBreakpointValue({
+    base: 200,
+    sm: 250,
+    md: 350,
+    lg: 400,
+  });
+  const isMobile = useBreakpointValue({ base: true, md: false });
 
   const { data: auditLog } = useQuery({
     queryKey: ["audit log", adminId],
@@ -95,67 +110,82 @@ const AuditLog = () => {
         },
       ];
 
-  // Table columns
+  // Table columns with responsive configuration
   const columns: GridColDef[] = [
     {
       field: "S/N",
       headerName: "S/N",
       width: 70,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 50,
     },
     {
       field: "Date",
       headerName: "Date",
       width: 120,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 90,
     },
     {
       field: "Time",
       headerName: "Time",
       width: 100,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 70,
     },
     {
       field: "User",
       headerName: "User",
       width: 150,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 100,
     },
     {
       field: "Role",
       headerName: "Role",
       width: 100,
       disableColumnMenu: true,
-      flex: 1,
+      flex: isMobile ? 0 : 1,
+      minWidth: 80,
     },
     {
       field: "Activity",
       headerName: "Activity",
-      width: 400,
+      width: activityWidth,
       disableColumnMenu: true,
+      flex: 1.5,
+      minWidth: 150,
     },
   ];
 
-  const handleRowClick = (params) => {
+  // Define the handleRowClick with proper type
+  const handleRowClick = (params: any) => {
     console.log(params);
   };
 
   return (
-    <Box w={["100%", "100%"]}>
+    <Box w="100%">
       {/* Audit Log Header */}
-      <Box display={"flex"} mt={5} mb={6} justifyContent="space-between">
-        <Text fontWeight={"bold"} fontSize="lg" color={"black"}>
+      <Box
+        display="flex"
+        mt={[3, 4, 5]}
+        mb={[4, 5, 6]}
+        justifyContent="space-between"
+        flexDirection={["column", "row"]}
+        gap={[2, 0]}
+      >
+        <Text fontWeight="bold" fontSize={["md", "lg"]} color="black">
           Audit Log
         </Text>
       </Box>
 
       {/* Search Section */}
-      <Flex mt="6" mb="6">
-        <Box w="100%" h="40px" maxW="320px">
+      <Flex mt={[4, 5, 6]} mb={[4, 5, 6]}>
+        <Box w="100%" h="40px" maxW={["100%", "100%", "320px"]}>
           <SearchInput
             placeHolder="Search logs"
             showSelect={true}
@@ -165,7 +195,7 @@ const AuditLog = () => {
       </Flex>
 
       {/* Table */}
-      <Box mt={["10px", "24px"]}>
+      <Box mt={["10px", "16px", "24px"]} overflowX="auto">
         <Tables
           onRowClick={handleRowClick}
           columns={columns}
@@ -173,7 +203,14 @@ const AuditLog = () => {
         />
 
         {/* Pagination */}
-        <Flex justify="space-between" align="center" mt={4} p={2}>
+        <Flex
+          justify={["center", "space-between"]}
+          align="center"
+          mt={4}
+          p={2}
+          flexDirection={["column", "row"]}
+          gap={[3, 0]}
+        >
           <Flex align="center">
             <Text fontSize="sm" color="gray.600" mr={2}>
               Rows per page: 10
