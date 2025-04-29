@@ -3,7 +3,6 @@ import {
   Box,
   Text,
   Heading,
-  Flex,
   CloseButton,
   useColorModeValue,
   Circle,

@@ -25,31 +25,69 @@ export const vendorApi = {
         throw err?.response;
       });
   },
-  refreshToken: async () => {
-    const refreshToken = await asyncGetItem("refresh");
-    if (!refreshToken) return null;
+  // refreshToken: async () => {
+  //   const refreshToken = await asyncGetItem("refresh");
 
-    try {
-      // Using a direct axios call without auth header for refresh
-      const response = await axiosInstance("", undefined).post(
-        serviceLinks.refresh,
-        { refreshToken }
-      );
+  //   // Log the process for debugging
+  //   console.log("Starting refresh token process");
+  //   console.log("Refresh token exists:", !!refreshToken);
 
-      if (response.data.data.accessToken) {
-        await asyncSetItem("token", response.data.data.accessToken);
-        // Save new refresh token if provided
-        if (response.data.data.refreshToken) {
-          await asyncSetItem("refresh", response.data.data.refreshToken);
-        }
-        return response.data.data;
-      }
-      return null;
-    } catch (error) {
-      console.error("Token refresh failed:", error);
-      return null;
-    }
-  },
+  //   if (!refreshToken) {
+  //     console.warn("No refresh token found in storage");
+  //     return null;
+  //   }
+
+  //   try {
+  //     console.log("Making refresh token API call to:", serviceLinks.refresh);
+
+  //     // Using a direct axios call without auth header for refresh
+  //     const response = await axiosInstance("", undefined).post(
+  //       serviceLinks.refresh,
+  //       { refreshToken }
+  //     );
+
+  //     console.log("Refresh response received:", response.status);
+
+  //     if (response.data?.data?.accessToken) {
+  //       console.log("New access token received, updating storage");
+  //       await asyncSetItem("token", response.data.data.accessToken);
+
+  //       // Save new refresh token if provided
+  //       if (response.data.data.refreshToken) {
+  //         console.log("New refresh token received, updating storage");
+  //         await asyncSetItem("refresh", response.data.data.refreshToken);
+  //       }
+
+  //       return response.data.data;
+  //     } else {
+  //       console.warn(
+  //         "Token refresh response didn't contain expected tokens:",
+  //         response.data
+  //       );
+  //       return null;
+  //     }
+  //   } catch (error) {
+  //     console.error("Token refresh failed:", error);
+
+  //     // Log more detailed error information
+  //     if (error.response) {
+  //       console.error("Error status:", error.response.status);
+  //       console.error("Error data:", error.response.data);
+  //     }
+
+  //     // Clear tokens if the server indicated they're invalid
+  //     if (
+  //       error.response &&
+  //       (error.response.status === 401 || error.response.status === 403)
+  //     ) {
+  //       console.warn("Server rejected refresh token, clearing stored tokens");
+  //       localStorage.removeItem("token");
+  //       localStorage.removeItem("refresh");
+  //     }
+
+  //     return null;
+  //   }
+  // },
 
   getWaivedProducts: async () => {
     const hash = (await asyncGetItem("token")) || "";
@@ -303,9 +341,32 @@ export const waivedAdminApi = {
       });
   },
   addWaivedMarketDate: async (payload: IWaivedMarketDate) => {
+    console.log("test payload:", payload);
     const hash = (await asyncGetItem("token")) || "";
     return axiosInstance(hash, undefined)
-      .post(serviceLinks.createSubscriptionPlan, payload)
+      .post(serviceLinks.addWaivedMarketDate, null, {
+        params: { nextWaiveMarketDate: payload.date },
+      })
+      .then((res) => res.data)
+      .catch((err) => {
+        throw err?.response;
+      });
+  },
+  editWaivedMarketDate: async (payload: IWaivedMarketDate) => {
+    const hash = (await asyncGetItem("token")) || "";
+    return axiosInstance(hash, undefined)
+      .put(serviceLinks.editWaivedMarketDate, null, {
+        params: { newWaivemarketDate: payload.date },
+      })
+      .then((res) => res.data)
+      .catch((err) => {
+        throw err?.response;
+      });
+  },
+  getNextWaivedMarketDate: async () => {
+    const hash = (await asyncGetItem("token")) || "";
+    return axiosInstance(hash, undefined)
+      .get(serviceLinks.getNextWaivedMarketDate)
       .then((res) => res.data)
       .catch((err) => {
         throw err?.response;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Heading,
@@ -12,7 +12,6 @@ import {
   IconButton,
   Button,
   Center,
-  useToast,
   Modal,
   ModalOverlay,
   ModalContent,
@@ -25,15 +24,16 @@ import SearchInput from "@components/SearchInput";
 import Tables from "@components/table";
 import { GridColDef } from "@mui/x-data-grid";
 import { FaRegCalendarAlt } from "react-icons/fa";
-import { FiUsers, FiShoppingBag, FiEdit2, FiPlus } from "react-icons/fi";
+import { FiUsers, FiShoppingBag, FiEdit2 } from "react-icons/fi";
 import { globalStyles } from "../../../theme/styles";
 import { useQuery } from "@tanstack/react-query";
 import { waivedAdminApi } from "@services/api";
 import WaivedMarketDate from "../addWaivedMarketDate";
 import EditWaivedMarket from "../editWaivedMarket";
 import Spinner from "@components/spinner";
+import { useLGAs } from "@hooks/useFetchLGAs";
+import { LGA } from "@interface/ILGA";
 
-// Define types
 interface Vendor {
   id: string;
   name?: string;
@@ -51,12 +51,14 @@ interface VendorRow {
 }
 
 const Home = () => {
-  // State for waived market date
-  const [marketDate, setMarketDate] = useState<string>("Nov 12, 2024");
+  const [marketDate, setMarketDate] = useState<string>("");
   const [marketVenue, setMarketVenue] = useState<string>("");
-  const [hasMarketDate, setHasMarketDate] = useState<boolean>(true);
 
-  // Modal state for adding and editing dates
+  // Use the same search state pattern as TeamMembers component
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearchActive, setIsSearchActive] = useState<boolean>(false);
+  const [selectedLGA, setSelectedLGA] = useState<string>("all lgas");
+
   const {
     isOpen: isAddModalOpen,
     onOpen: onAddModalOpen,
@@ -69,92 +71,68 @@ const Home = () => {
     onClose: onEditModalClose,
   } = useDisclosure();
 
-  const toast = useToast();
-
-  // Responsive values
   const cardSpacing = useBreakpointValue({ base: 4, md: 6 });
   const modalSize = useBreakpointValue({ base: "sm", md: "md" });
   const isMobile = useBreakpointValue({ base: true, md: false });
+  const searchBoxWidth = useBreakpointValue({
+    base: "100%",
+    sm: "100%",
+    md: "320px",
+  });
 
-  // Handle add waived market date
-  const handleAddMarketDate = (date: string, venue: string): void => {
-    // Format the date for display
-    const formattedDate = new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+  // Get LGAs using the hook
+  const { data: lgasData = [], isLoading: isLGAsLoading } = useLGAs();
 
-    // Update state
-    setMarketDate(formattedDate);
-    setMarketVenue(venue);
-    setHasMarketDate(true);
+  // Format LGAs for dropdown
+  const lgaOptions = useMemo(() => {
+    if (!lgasData || lgasData.length === 0) {
+      return [{ name: "All LGAs", value: "all lgas" }];
+    }
 
-    // Show success toast
-    toast({
-      title: "Market date added",
-      description: `New waived market date: ${formattedDate}`,
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-  };
+    try {
+      const options = lgasData.map((lga: LGA) => ({
+        name: lga.name,
+        value: lga.name.toLowerCase(), // Use lowercase for comparison
+      }));
 
-  // Handle update waived market date
-  const handleUpdateMarketDate = (date: string, venue: string): void => {
-    // Format the date for display
-    const formattedDate = new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+      return [{ name: "All LGAs", value: "all lgas" }, ...options];
+    } catch (error) {
+      console.error("Error processing LGAs:", error);
+      return [{ name: "All LGAs", value: "all lgas" }];
+    }
+  }, [lgasData]);
 
-    // Update state
-    setMarketDate(formattedDate);
-    setMarketVenue(venue);
+  const vendorsQuery = useQuery({
+    queryKey: ["vendors"],
+    queryFn: () => waivedAdminApi.getVendorAndProducts(),
+    staleTime: 5 * 60 * 1000,
+  });
 
-    // Show success toast
-    toast({
-      title: "Market date updated",
-      description: `Updated waived market date: ${formattedDate}`,
-      status: "success",
-      duration: 3000,
-      isClosable: true,
-    });
-  };
-
-  // Fetch vendors data using useQuery
   const {
     data: vendorsData,
     isLoading: isVendorsLoading,
     isError: isVendorsError,
-  } = useQuery({
-    queryKey: ["vendors"],
-    queryFn: () => waivedAdminApi.getVendorAndProducts(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error?.data?.message || "Failed to fetch vendors",
-        status: "error",
-        duration: 5000,
-        isClosable: true,
-      });
-    },
-  });
+  } = vendorsQuery;
 
-  // Fetch urgent products data
-  const { data: urgentProductsData } = useQuery({
+  const urgentProductsQuery = useQuery({
     queryKey: ["urgentProducts"],
     queryFn: () => waivedAdminApi.getUrgentPurchaseWaivedProducts(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Calculate vendor count and urgent purchases count
+  const { data: urgentProductsData } = urgentProductsQuery;
+
+  const nextWaivedMarketQuery = useQuery({
+    queryKey: ["nextWaiveMarketDate"],
+    queryFn: () => waivedAdminApi.getNextWaivedMarketDate(),
+  });
+
+  const { data: nextWaiveMarketDate, isSuccess: isNextWaivedMarketSuccess } =
+    nextWaivedMarketQuery;
+
   const vendorCount = vendorsData?.data?.pageItems?.length || 0;
   const urgentPurchasesCount = urgentProductsData?.data?.length || 0;
 
-  // Transform API data for the table
   const vendorRows: VendorRow[] =
     vendorsData?.data?.pageItems?.map((vendor: Vendor, index: number) => ({
       "S/N": index + 1,
@@ -164,7 +142,45 @@ const Home = () => {
       id: vendor.id || index,
     })) || [];
 
-  // Table columns with responsive configuration
+  // Use the same search handler pattern as TeamMembers component
+  const handleSearch = (value: string): void => {
+    console.log("Search handler called with:", value);
+    setSearchQuery(value);
+    setIsSearchActive(true);
+  };
+
+  // Handle LGA selection
+  const handleLGASelect = (value: string): void => {
+    console.log("LGA selection changed to:", value);
+    setSelectedLGA(value);
+  };
+
+  // Get filtered vendors - use the same pattern as getFilteredMembers in TeamMembers
+  const getFilteredVendors = (): VendorRow[] => {
+    if (
+      (!isSearchActive || !searchQuery.trim()) &&
+      selectedLGA === "all lgas"
+    ) {
+      return vendorRows;
+    }
+
+    return vendorRows.filter((vendor) => {
+      const matchesSearch =
+        !isSearchActive ||
+        !searchQuery.trim() ||
+        vendor.Vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        vendor["Phone Number"]
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+
+      const matchesLGA =
+        selectedLGA === "all lgas" ||
+        vendor.LGA.toLowerCase() === selectedLGA.toLowerCase();
+
+      return matchesSearch && matchesLGA;
+    });
+  };
+
   const columns: GridColDef[] = [
     {
       field: "S/N",
@@ -200,13 +216,49 @@ const Home = () => {
     },
   ];
 
-  const handleRowClick = (params: any): void => {
+  useEffect(() => {
+    if (isNextWaivedMarketSuccess && nextWaiveMarketDate?.data) {
+      const rawDate = nextWaiveMarketDate.data;
+      const formattedDate = new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date(rawDate));
+
+      setMarketDate(formattedDate);
+    } else {
+      setMarketDate("NA");
+    }
+  }, [isNextWaivedMarketSuccess, nextWaiveMarketDate]);
+
+  const handleAddMarketDate = (date: string, venue: string): void => {
+    const formattedDate = new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    setMarketDate(formattedDate);
+    setMarketVenue(venue);
+  };
+
+  const handleUpdateMarketDate = (date: string, venue: string): void => {
+    const formattedDate = new Date(date).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    setMarketDate(formattedDate);
+    setMarketVenue(venue);
+  };
+
+  const handleRowClick = (params): void => {
     console.log(params);
   };
 
   return (
     <Box w="100%">
-      {/* Info Cards Section */}
       <Box mt={{ base: "15px", md: "20px" }}>
         <Grid
           templateColumns={{
@@ -217,7 +269,7 @@ const Home = () => {
           gap={cardSpacing}
         >
           {/* Next Waived Market Card */}
-          <GridItem colSpan={{ base: 1, sm: 2, md: 1 }}>
+          <GridItem>
             <Card
               width="100%"
               borderRadius="8px"
@@ -225,6 +277,9 @@ const Home = () => {
               bg="white"
               boxShadow="sm"
               position="relative"
+              border="1px solid"
+              borderColor="gray.100"
+              height="100%"
             >
               <CardBody
                 overflow="hidden"
@@ -233,55 +288,20 @@ const Home = () => {
                 p={0}
                 position="relative"
               >
-                <HStack
-                  alignItems="flex-start"
-                  justifyContent="space-between"
-                  mb={hasMarketDate ? 6 : 0}
-                >
+                <HStack alignItems="flex-start" justifyContent="space-between">
                   <Box>
                     <Text fontSize="sm" color="gray.700">
-                      Waived Market
+                      Next Waived Market
                     </Text>
-                    {hasMarketDate ? (
-                      <Heading
-                        fontWeight="600"
-                        fontSize={{ base: "20px", md: "24px" }}
-                        mt={1}
-                      >
-                        {marketDate}
-                      </Heading>
-                    ) : (
-                      <>
-                        <Heading
-                          fontWeight="600"
-                          fontSize={{ base: "20px", md: "24px" }}
-                          mt={1}
-                          color="gray.700"
-                        >
-                          NA
-                        </Heading>
-                        <Button
-                          leftIcon={<FiPlus size={16} />}
-                          variant="unstyled"
-                          size="sm"
-                          height="auto"
-                          mt={1}
-                          fontSize="sm"
-                          fontWeight="normal"
-                          color={globalStyles.colors.green[500]}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onAddModalOpen();
-                          }}
-                          px={0}
-                          _hover={{ textDecoration: "underline" }}
-                        >
-                          Add date
-                        </Button>
-                      </>
-                    )}
+                    <Heading
+                      fontWeight="600"
+                      fontSize={{ base: "xl", md: "2xl" }}
+                      mt={1}
+                    >
+                      {marketDate}
+                    </Heading>
                   </Box>
+                  <Flex></Flex>
                   <Box
                     display="flex"
                     width={10}
@@ -300,18 +320,11 @@ const Home = () => {
                   >
                     <FaRegCalendarAlt size={20} />
                   </Box>
-                </HStack>
-                {hasMarketDate && (
-                  <Flex
-                    position="static"
-                    mt={2}
-                    alignItems="center"
-                    justifyContent="flex-end"
-                  >
+                  <Flex mt={2} alignItems="center" height="26px">
                     <IconButton
-                      icon={<FiEdit2 size={16} />}
+                      icon={<FiEdit2 size={14} />}
                       aria-label="Edit date"
-                      size="sm"
+                      size="xs"
                       colorScheme="teal"
                       variant="outline"
                       borderColor={globalStyles.colors.green[500]}
@@ -325,13 +338,13 @@ const Home = () => {
                         e.stopPropagation();
                         onEditModalOpen();
                       }}
-                      mr={2}
+                      mr={1}
                     />
                     <Text fontSize="sm" color="green.500">
                       Edit
                     </Text>
                   </Flex>
-                )}
+                </HStack>
               </CardBody>
             </Card>
           </GridItem>
@@ -344,6 +357,9 @@ const Home = () => {
               p={{ base: 3, md: 4 }}
               bg="white"
               boxShadow="sm"
+              border="1px solid"
+              borderColor="gray.100"
+              height="100%"
             >
               <CardBody
                 overflow="hidden"
@@ -358,7 +374,7 @@ const Home = () => {
                     </Text>
                     <Heading
                       fontWeight="600"
-                      fontSize={{ base: "20px", md: "24px" }}
+                      fontSize={{ base: "xl", md: "2xl" }}
                       mt={1}
                     >
                       {vendorCount}
@@ -381,7 +397,7 @@ const Home = () => {
             </Card>
           </GridItem>
 
-          {/* Number of Urgent Purchases Card */}
+          {/* Urgent Purchases Card */}
           <GridItem>
             <Card
               width="100%"
@@ -389,6 +405,9 @@ const Home = () => {
               p={{ base: 3, md: 4 }}
               bg="white"
               boxShadow="sm"
+              border="1px solid"
+              borderColor="gray.100"
+              height="100%"
             >
               <CardBody
                 overflow="hidden"
@@ -403,7 +422,7 @@ const Home = () => {
                     </Text>
                     <Heading
                       fontWeight="600"
-                      fontSize={{ base: "20px", md: "24px" }}
+                      fontSize={{ base: "xl", md: "2xl" }}
                       mt={1}
                     >
                       {urgentPurchasesCount}
@@ -428,7 +447,6 @@ const Home = () => {
         </Grid>
       </Box>
 
-      {/* Vendors List Section */}
       <Flex
         mt={{ base: 6, md: 10 }}
         mb={{ base: 3, md: 5 }}
@@ -447,29 +465,27 @@ const Home = () => {
         </Link>
       </Flex>
 
-      {/* Search Section - Improved responsiveness */}
-      <Flex
-        mt={{ base: 3, md: 5 }}
-        mb={{ base: 3, md: 5 }}
-        flexDirection={{ base: "column", sm: "row" }}
-        alignItems="center"
-        gap={3}
-        width="100%"
-      >
-        <Box flex="1" minW={0} maxW={{ base: "100%", sm: "320px" }}>
+      {/* Search Section - Match the pattern from TeamMembers */}
+      <Flex mt={[4, 5, 6]} mb={[4, 5, 6]}>
+        <Box w="100%" h="40px" maxW={searchBoxWidth}>
           <SearchInput
             placeHolder="Search for a vendor"
             showSelect={true}
-            selectMenu={[{ name: "All LGAs", value: "all lgas" }]}
+            selectMenu={
+              isLGAsLoading
+                ? [{ name: "All LGAs", value: "all lgas" }]
+                : lgaOptions
+            }
+            onSearch={handleSearch}
+            onSelectChange={handleLGASelect}
           />
         </Box>
       </Flex>
 
-      {/* Table */}
       <Box mt={{ base: 3, md: 4 }} overflowX="auto">
         {isVendorsLoading ? (
           <Center py={10}>
-            <Spinner size="xl" color="teal" />
+            <Spinner />
           </Center>
         ) : isVendorsError ? (
           <Center py={10}>
@@ -477,58 +493,62 @@ const Home = () => {
               Error loading vendors. Please try again.
             </Text>
           </Center>
-        ) : vendorRows.length === 0 ? (
+        ) : getFilteredVendors().length === 0 ? (
           <Center py={10}>
-            <Text>No vendors found.</Text>
+            <Text>
+              {isSearchActive && searchQuery.trim() !== ""
+                ? "No vendors match your search criteria."
+                : "No vendors found."}
+            </Text>
           </Center>
         ) : (
           <Tables
             onRowClick={handleRowClick}
             columns={columns}
-            rows={vendorRows}
+            rows={getFilteredVendors()}
           />
         )}
 
-        {/* Pagination */}
-        {!isVendorsLoading && !isVendorsError && vendorRows.length > 0 && (
-          <Flex
-            justify={{ base: "center", sm: "space-between" }}
-            align="center"
-            mt={4}
-            p={2}
-            flexDirection={{ base: "column", sm: "row" }}
-            gap={{ base: 3, sm: 0 }}
-          >
-            <Flex align="center">
-              <Text fontSize="sm" color="gray.600" mr={2}>
-                Rows per page: 10
-              </Text>
-            </Flex>
+        {!isVendorsLoading &&
+          !isVendorsError &&
+          getFilteredVendors().length > 0 && (
+            <Flex
+              justify={{ base: "center", sm: "space-between" }}
+              align="center"
+              mt={4}
+              p={2}
+              flexDirection={{ base: "column", sm: "row" }}
+              gap={{ base: 3, sm: 0 }}
+            >
+              <Flex align="center">
+                <Text fontSize="sm" color="gray.600" mr={2}>
+                  Rows per page: 10
+                </Text>
+              </Flex>
 
-            <HStack spacing={1}>
-              <Button variant="ghost" size="sm" isDisabled={true}>
-                ‹
-              </Button>
-              <Button
-                size="sm"
-                colorScheme="teal"
-                variant="solid"
-                borderRadius="md"
-              >
-                1
-              </Button>
-              <Button variant="ghost" size="sm">
-                2
-              </Button>
-              <Button variant="ghost" size="sm">
-                ›
-              </Button>
-            </HStack>
-          </Flex>
-        )}
+              <HStack spacing={1}>
+                <Button variant="ghost" size="sm" isDisabled={true}>
+                  ‹
+                </Button>
+                <Button
+                  size="sm"
+                  colorScheme="teal"
+                  variant="solid"
+                  borderRadius="md"
+                >
+                  1
+                </Button>
+                <Button variant="ghost" size="sm">
+                  2
+                </Button>
+                <Button variant="ghost" size="sm">
+                  ›
+                </Button>
+              </HStack>
+            </Flex>
+          )}
       </Box>
 
-      {/* Add Waived Market Date Modal */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={onAddModalClose}
@@ -546,7 +566,6 @@ const Home = () => {
         </ModalContent>
       </Modal>
 
-      {/* Edit Waived Market Date Modal */}
       <Modal
         isOpen={isEditModalOpen}
         onClose={onEditModalClose}

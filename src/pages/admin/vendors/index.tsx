@@ -17,10 +17,13 @@ import SearchInput from "@components/SearchInput";
 import Tables from "@components/table";
 import { GridColDef } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { waivedAdminApi } from "@services/api";
 import Spinner from "@components/spinner";
 import ViewVendor from "./viewVendorDetails";
+import { useLGAs } from "@hooks/useFetchLGAs";
+import { LGA } from "@interface/ILGA";
+import { toast } from "react-toastify";
 
 interface VendorType {
   id: number | string;
@@ -34,18 +37,38 @@ interface VendorType {
 }
 
 const Vendors = () => {
-  // Not using these in pagination functionality yet, but keeping currentPage for future implementation
-  const [currentPage] = useState(1);
   const toast = useToast();
 
-  // Responsive values
+  // Search state
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isSearchActive, setIsSearchActive] = useState<boolean>(false);
+  const [selectedLGA, setSelectedLGA] = useState<string>("all lgas");
+
   const isMobile = useBreakpointValue({ base: true, md: false });
 
-  // Modal state
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedVendor, setSelectedVendor] = useState<VendorType | null>(null);
 
-  // Fetch vendors data using useQuery
+  const { data: lgasData = [], isLoading: isLGAsLoading } = useLGAs();
+
+  const lgaOptions = useMemo(() => {
+    if (!lgasData || lgasData.length === 0) {
+      return [{ name: "All LGAs", value: "all lgas" }];
+    }
+
+    try {
+      const options = lgasData.map((lga: LGA) => ({
+        name: lga.name,
+        value: lga.name.toLowerCase(),
+      }));
+
+      return [{ name: "All LGAs", value: "all lgas" }, ...options];
+    } catch (error) {
+      console.error("Error processing LGAs:", error);
+      return [{ name: "All LGAs", value: "all lgas" }];
+    }
+  }, [lgasData]);
+
   const {
     data: vendorsData,
     isLoading,
@@ -64,7 +87,6 @@ const Vendors = () => {
     },
   });
 
-  // Transform API data for the table
   const vendorRows =
     vendorsData?.data?.pageItems?.map((vendor: any, index: number) => ({
       "S/N": index + 1,
@@ -79,6 +101,43 @@ const Vendors = () => {
       profileImage: vendor.profileImage || "",
       userAddress: vendor.address || "N/A", // ensuring this field is included for the modal
     })) || [];
+
+  // Search functionality
+  const getFilteredVendors = () => {
+    if (
+      (!isSearchActive || !searchQuery.trim()) &&
+      selectedLGA === "all lgas"
+    ) {
+      return vendorRows;
+    }
+
+    return vendorRows.filter((vendor) => {
+      const matchesSearch =
+        !isSearchActive ||
+        !searchQuery.trim() ||
+        vendor.Vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        vendor["Phone Number"]
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase());
+
+      const matchesLGA =
+        selectedLGA === "all lgas" ||
+        vendor.LGA.toLowerCase() === selectedLGA.toLowerCase();
+
+      return matchesSearch && matchesLGA;
+    });
+  };
+
+  // Handle search
+  const handleSearch = (value: string): void => {
+    setSearchQuery(value);
+    setIsSearchActive(true);
+  };
+
+  // Handle LGA selection
+  const handleLGASelect = (value: string): void => {
+    setSelectedLGA(value);
+  };
 
   // Table columns with responsive configuration
   const columns: GridColDef[] = [
@@ -174,7 +233,13 @@ const Vendors = () => {
           <SearchInput
             placeHolder="Search for a vendor"
             showSelect={true}
-            selectMenu={[{ name: "All LGAs", value: "all lgas" }]}
+            selectMenu={
+              isLGAsLoading
+                ? [{ name: "All LGAs", value: "all lgas" }]
+                : lgaOptions
+            }
+            onSearch={handleSearch}
+            onSelectChange={handleLGASelect}
           />
         </Box>
       </Flex>
@@ -191,20 +256,24 @@ const Vendors = () => {
               Error loading vendors. Please try again.
             </Text>
           </Center>
-        ) : vendorRows.length === 0 ? (
+        ) : getFilteredVendors().length === 0 ? (
           <Center py={10}>
-            <Text>No vendors found.</Text>
+            <Text>
+              {isSearchActive && searchQuery.trim() !== ""
+                ? "No vendors match your search criteria."
+                : "No vendors found."}
+            </Text>
           </Center>
         ) : (
           <Tables
             onRowClick={handleRowClick}
             columns={columns}
-            rows={vendorRows}
+            rows={getFilteredVendors()}
           />
         )}
 
         {/* Pagination */}
-        {!isLoading && !isError && vendorRows.length > 0 && (
+        {!isLoading && !isError && getFilteredVendors().length > 0 && (
           <Flex
             justify={["center", "space-between"]}
             align="center"

@@ -63,7 +63,6 @@ const TeamMembers = () => {
 
   const queryClient = useQueryClient();
 
-  // Responsive values
   const buttonSize = useBreakpointValue({ base: "sm", md: "md" });
   const isMobile = useBreakpointValue({ base: true, md: false });
   const searchBoxWidth = useBreakpointValue({
@@ -72,7 +71,6 @@ const TeamMembers = () => {
     md: "320px",
   });
 
-  // Fetch team members data using useQuery
   const {
     data: teamMembersData,
     isPending,
@@ -80,7 +78,7 @@ const TeamMembers = () => {
   } = useQuery({
     queryKey: ["teamMembers"],
     queryFn: () => waivedAdminApi.getTeamMates(),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 5 * 60 * 1000,
     retry: 2,
   });
 
@@ -90,13 +88,12 @@ const TeamMembers = () => {
       Name: member.fullName,
       Email: member.emailAddress,
       id: member.id || index,
-      // Include these for editing
       fullName: member.fullName,
       emailAddress: member.emailAddress,
       phoneNumber: member.phoneNumber,
     })) || [];
 
-  // Function to filter team members based on search query
+  //search functionality
   const getFilteredMembers = (): TeamMemberRow[] => {
     if (!isSearchActive || !searchQuery.trim() || !teamMembersRows.length) {
       return teamMembersRows;

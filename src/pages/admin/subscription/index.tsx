@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import {
   Box,
   Text,
@@ -22,7 +22,7 @@ import Tables from "@components/table";
 import AddSubscriptionPlan from "./AddSubscriptionPlan";
 import EditSubscriptionPlan from "./EditSubscriptionPlan";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { FiEdit2, FiTrash2, FiPlus } from "react-icons/fi";
+import { FiTrash2, FiPlus } from "react-icons/fi";
 import { FaRegEdit } from "react-icons/fa";
 import { waivedAdminApi } from "@services/api";
 import Spinner from "@components/spinner";
@@ -267,7 +267,7 @@ const Subscription = () => {
       {/* Subscription Plan Header */}
       <Box display={"flex"} mt={5} mb={6} justifyContent="space-between">
         <Text fontWeight={"bold"} fontSize="lg" color={"black"}>
-          Subscription Plan
+          Subscription Plans
         </Text>
         <Button
           leftIcon={<FiPlus />}

@@ -18,7 +18,6 @@ import {
   Td,
   Link,
   useToast,
-  Spinner,
   Center,
   useBreakpointValue,
   VStack,
@@ -29,6 +28,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { pageLinks } from "@services/pageLinks";
 import { waivedAdminApi } from "@services/api";
 import { useQuery } from "@tanstack/react-query";
+import Spinner from "@components/spinner";
 
 interface Subscriber {
   id: string;
@@ -151,7 +151,7 @@ const SubscriptionDetails = () => {
   if (isLoadingSubscription) {
     return (
       <Center minH="200px">
-        <Spinner size="xl" color="teal.500" />
+        <Spinner />
       </Center>
     );
   }

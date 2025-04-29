@@ -48,4 +48,7 @@ export const serviceLinks = {
   blockAndUnblockVendor: baseUrl + "/api/WaivedMarket/BlockOrUnblockVendor",
   getAuditLog: (adminId: string) =>
     baseUrl + `/api/Admin/${adminId}/audit-logs`,
+  addWaivedMarketDate: baseUrl + "/api/WaivedMarket/CreateNextWaiveMarketDate",
+  editWaivedMarketDate: baseUrl + "/api/WaivedMarket/UpdateNextWaiveMarketDate",
+  getNextWaivedMarketDate: baseUrl + "/api/WaivedMarket/GetNextWaiveMarketDate",
 };

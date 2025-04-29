@@ -14,6 +14,9 @@ import {
   FormControl,
 } from "@chakra-ui/react";
 import { FiCalendar } from "react-icons/fi";
+import { useMutation } from "@tanstack/react-query";
+import { waivedAdminApi } from "@services/api";
+import { toast } from "react-toastify";
 
 interface WaivedMarketDateProps {
   onClose: () => void;
@@ -32,9 +35,43 @@ const WaivedMarketDate: React.FC<WaivedMarketDateProps> = ({
   const inputBgColor = useColorModeValue("gray.100", "gray.700");
   const saveBtnColor = useColorModeValue("#00BFA5", "#00BFA5");
 
+  const mutation = useMutation({
+    mutationFn: async () => {
+      return await waivedAdminApi.addWaivedMarketDate({ date, venue });
+    },
+    onSuccess: () => {
+      // Show success toast
+      toast.success(`New waived market date: ${formatDate(date)}`);
+      // Pass the date and venue back to the parent component
+      onSave(date, venue);
+      onClose();
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Failed to create waived market date.");
+    },
+  });
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   const handleSave = () => {
-    onSave(date, venue);
-    onClose();
+    if (!date) {
+      toast.error("Please select a date");
+      return;
+    }
+
+    if (!venue) {
+      toast.error("Please enter a venue");
+      return;
+    }
+
+    // Call the mutation
+    mutation.mutate();
   };
 
   return (
@@ -122,6 +159,7 @@ const WaivedMarketDate: React.FC<WaivedMarketDateProps> = ({
           height="48px"
           onClick={handleSave}
           borderRadius="8px"
+          isLoading={mutation.isPending}
         >
           Save
         </Button>
